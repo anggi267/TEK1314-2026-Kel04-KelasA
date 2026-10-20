@@ -52,6 +52,9 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 | Purple Team Log | [`docs/purple-team-log.md`](docs/purple-team-log.md) | 5 tahap siklus tertutup per skenario |
 | Logbook Minggu 1–9 | [`docs/logbook.md`](docs/logbook.md) | Progres, artefak, kendala, dan penanganannya |
 
+> **Status lab & konfigurasi VM terkini:** [`docs/lab-status.md`](docs/lab-status.md) —
+> inventaris VM, IP, matriks ping 3 node, snapshot, kendala & sisa pekerjaan.
+
 ## Status jujur per Minggu 9
 
 - **Dokumen & rencana:** lengkap (tech stack, 10 kontrol hardening, 5 skenario serangan,
