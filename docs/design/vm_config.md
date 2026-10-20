@@ -124,14 +124,44 @@ CyberOps Workstation, dan **bukan** Security Onion 3.2. Konsekuensinya dicatat d
 
 ---
 
+## 4.1 Status konektivitas lab (diverifikasi 20 Okt 2026, 22:45 WIB)
+
+| Node | IP lab | Cara set | Persisten |
+|---|---|---|---|
+| Target Node (`PBL-K4-01`) | `192.168.4.5/24` (enp0s3) | `/etc/netplan/60-pbl-lab.yaml` + `netplan apply` | ya |
+| Attacker Node (`PBL-K4-02`) | `192.168.4.100/24` (eth0) | profil NetworkManager `pbl-lab` | ya |
+| Monitoring Node (`PBL-K4-03`) | **belum** `.200` | perlu login guest (kredensial SO belum ada) | — |
+
+```text
+# Kali -> Target
+2 packets transmitted, 2 received, 0% packet loss; rtt 0.888/7.473/14.058 ms
+
+# Target -> Kali
+2 packets transmitted, 2 received, 0% packet loss; rtt 3.308/3.604/3.900 ms
+
+# Target -> Onion .200
+2 packets transmitted, 0 received, 100% packet loss   (neigh: INCOMPLETE)
+```
+
+Pelajaran penting: memberi IP dengan `ip addr add` pada interface yang dikelola NetworkManager
+(Kali) membuat host **tidak menjawab ARP**, sehingga ping dari arah Target gagal
+(`Destination Host Unreachable`). Yang benar: buat profil nmcli
+(`sudo nmcli con add type ethernet ifname eth0 con-name pbl-lab ipv4.method manual ipv4.addresses 192.168.4.100/24`).
+
+Kendala Onion: console tampil hitam (tanpa output framebuffer) walau VM berjalan, NIC lab belum
+punya IP (tidak ada DHCP di `pbl-kel4`), dan kredensial guest Security Onion 2.x belum tercatat.
+
+---
+
 ## 5. Yang masih harus dilakukan DI DALAM guest (belum bisa dari host)
 
 Tidak ada kredensial guest yang tersimpan, jadi langkah ini harus dijalankan manual saat VM
 dinyalakan. Urutannya penting: **NIC dulu, baru uji sensor.**
 
-### 5.1 Target Node — `PBL-K4-01-Target-Ubuntu` (OS sudah terpasang, tinggal IP)
+### 5.1 Target Node — `PBL-K4-01-Target-Ubuntu`  ✅ SUDAH DITERAPKAN
 
-Login console sebagai `iotadmin`, lalu tempel satu blok ini:
+IP `192.168.4.5/24` sudah aktif di `enp0s3` (lihat §4.1). Blok berikut disimpan sebagai referensi
+bila perlu mengulang dari nol:
 
 ```bash
 sudo tee /etc/netplan/60-pbl-lab.yaml >/dev/null <<'YAML'
@@ -153,13 +183,17 @@ ping -c 3 192.168.4.100      # setelah Kali diberi IP 192.168.4.100
 > Alternatif agar bisa otomatis: isi `SUDO_PASSWORD` di `~/.hermes/.env`.
 > Setelah IP aktif, lanjutkan stack replika (`docs/design/replica_setup.md`); `apt` sudah berfungsi.
 
-### 5.2 Attacker Node — `PBL-K4-02-Attacker-Kali`
+### 5.2 Attacker Node — `PBL-K4-02-Attacker-Kali`  ✅ SUDAH DITERAPKAN (pakai nmcli, bukan ip addr)
 
 ```bash
-sudo ip addr add 192.168.4.100/24 dev eth0 && sudo ip link set eth0 up
-ping -c 3 192.168.4.5
+sudo nmcli con add type ethernet ifname eth0 con-name pbl-lab \
+     ipv4.method manual ipv4.addresses 192.168.4.100/24
+sudo nmcli con up pbl-lab
+ip -br a && ping -c 2 192.168.4.5
 ```
-(atau permanen lewat NetworkManager: `nmcli con mod "Wired connection 1" ipv4.addresses 192.168.4.100/24 ipv4.method manual`)
+
+> Jangan pakai `ip addr add` di Kali: alamatnya tidak dijawab ARP oleh NetworkManager sehingga
+> host lain gagal ping ke Kali (kasus nyata yang terjadi saat setup).
 
 ### 5.3 Monitoring Node — `PBL-K4-03-Monitoring-Onion`
 
