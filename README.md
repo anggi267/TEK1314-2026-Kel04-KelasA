@@ -55,6 +55,16 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
   dijalankan dan di-screenshot. Status `Selesai` pada checklist hanya boleh diisi bila file
   bukti sudah ada di `docs/blueteam/evidence/`.
 
+## Runbook pengerjaan per role
+
+Urutan kerja operasional dari Fase 1 sampai Fase 3 (siapa mengerjakan apa, dalam urutan apa,
+dengan bukti apa):
+
+- [`docs/roles/Runbook-PBL-TEK1314-Kelompok4-Fase1-3.docx`](docs/roles/Runbook-PBL-TEK1314-Kelompok4-Fase1-3.docx) — versi Word (8 halaman)
+- [`docs/roles/Runbook-PBL-TEK1314-Kelompok4-Fase1-3.pdf`](docs/roles/Runbook-PBL-TEK1314-Kelompok4-Fase1-3.pdf) — versi PDF untuk dibaca cepat
+- [`docs/roles/runbook.md`](docs/roles/runbook.md) — ringkasan Fase 2 dalam markdown (untuk commit & diff)
+- [`scripts/docs/build_runbook.py`](scripts/docs/build_runbook.py) — skrip pembangun ulang dokumen Word
+
 ## Roadmap Fase 2
 
 | Minggu | Fokus | Artefak |
@@ -76,8 +86,10 @@ docs/
   redteam/                 attack_plan.md, evidence/
   purple-team-log.md
   logbook.md
+  roles/                   runbook.md + Runbook ... Fase1-3.docx/.pdf
 scripts/
   blueteam/                perekam bukti before/after hardening
+  docs/                    build_runbook.py (pembangun ulang .docx)
 ```
 
 ## Aturan kerja
