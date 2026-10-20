@@ -130,7 +130,37 @@ CyberOps Workstation, dan **bukan** Security Onion 3.2. Konsekuensinya dicatat d
 |---|---|---|---|
 | Target Node (`PBL-K4-01`) | `192.168.4.5/24` (enp0s3) | `/etc/netplan/60-pbl-lab.yaml` + `netplan apply` | ya |
 | Attacker Node (`PBL-K4-02`) | `192.168.4.100/24` (eth0) | profil NetworkManager `pbl-lab` | ya |
-| Monitoring Node (`PBL-K4-03`) | **belum** `.200` | perlu login guest (kredensial SO belum ada) | — |
+| Monitoring Node (`PBL-K4-03`) | `192.168.4.200/24` (eth0) | `ip addr add` + `post-up` di `/etc/network/interfaces`, `arp on` | ya |
+
+### Matriks ping (semua arah, 20 Okt 2026 23:15 WIB)
+
+| Dari \ Ke | Target `.5` | Kali `.100` | Onion `.200` |
+|---|---|---|---|
+| **Target `.5`** | — | ✅ 0% (3.3 ms) | ✅ 0% (3.9 ms) |
+| **Kali `.100`** | ✅ 0% (7.5 ms) | — | ✅ 0% (2.2 ms) |
+| **Onion `.200`** | ✅ 0% (0.8 ms, 4/4 paket terekam di target) | ✅ 0% (2.0 ms) | — |
+
+Sensor: `tcpdump -i eth0` di Onion merekam ICMP `.100 ↔ .5` (3 pasang request/reply) dan
+`.200 → .5`, jadi promiscuous `allow-all` bekerja. Contoh baris:
+
+```text
+16:04:03.136797 IP 192.168.4.100 > 192.168.4.5: ICMP echo request, id 58782, seq 1
+16:04:03.137413 IP 192.168.4.5 > 192.168.4.100: ICMP echo reply, id 58782, seq 1
+```
+
+### Dua jebakan yang ditemukan (penting untuk laporan)
+
+1. **Kali**: IP yang ditambahkan dengan `ip addr add` pada interface yang dikelola
+   NetworkManager **tidak dijawab ARP** → host lain gagal ping (neigh `FAILED`). Solusi: profil
+   nmcli `pbl-lab`.
+2. **Onion**: interface sensor didefinisikan sebagai `iface eth0 inet manual` dengan opsi
+   `... promisc on arp off ...` (memang desain Security Onion untuk sniffing pasif). Selama
+   `arp off`, IP `.200` **tidak akan dijawab ARP** walau IP-nya terpasang. Solusi: ubah menjadi
+   `arp on` (runtime: `ip link set eth0 arp on`; permanen: `sed -i 's/arp off/arp on/'`), plus
+   `post-up ip addr add 192.168.4.200/24 dev eth0` agar IP kembali setelah reboot.
+
+Akses guest Onion: user `analyst`, password `cyberops` (default image CyberOps — ganti bila lab
+dipakai bersama), hostname `SecOnion`, SO 2.x dengan Sguil/Squert/Kibana berjalan.
 
 ```text
 # Kali -> Target
