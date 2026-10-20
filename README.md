@@ -26,6 +26,7 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 - [`docs/design/ip_plan.md`](docs/design/ip_plan.md) — skema IP (Minggu 4) + revisi Minggu 9
 - [`docs/design/topology-v2.png`](docs/design/topology-v2.png) — diagram revisi (target Ubuntu Server, segmen `pbl-kel4`)
 - [`docs/design/replica_setup.md`](docs/design/replica_setup.md) — cara membangun replika backend IoT yang sengaja rentan
+- [`docs/design/vm_config.md`](docs/design/vm_config.md) — catatan konfigurasi VM VirtualBox (nama, NIC, RAM, snapshot, langkah guest yang tersisa)
 
 > Catatan: VM **CyberOps Workstation / Cybersecurity LabVM** hanya alat praktikum Minggu 2–3 —
 > **bukan** bagian topologi PBL. Topologi yang dinilai tetap tiga node: Attacker, Target, Monitoring.

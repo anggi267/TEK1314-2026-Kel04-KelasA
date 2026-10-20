@@ -40,11 +40,14 @@ Tabel di atas dipertahankan sebagai riwayat keputusan Minggu 4. Alokasi IP **tid
 
 ### Konfigurasi jaringan (sisi VirtualBox, sudah diterapkan)
 
-| Node | NIC 1 (segmen lab) | NIC 2 (luar segmen) |
-|---|---|---|
-| Target Node | Internal Network `pbl-kel4` | NAT |
-| Attacker Node | Internal Network `pbl-kel4` | NAT |
-| Monitoring Node | Internal Network `pbl-kel4`, **promiscuous `allow-all`** | Host-only `192.168.56.1` |
+| Node | Nama VM (VirtualBox) | NIC 1 (segmen lab) | NIC 2 (luar segmen) |
+|---|---|---|---|
+| Target Node | `PBL-K4-01-Target-Ubuntu` | Internal Network `pbl-kel4` | NAT |
+| Attacker Node | `PBL-K4-02-Attacker-Kali` | Internal Network `pbl-kel4` | NAT |
+| Monitoring Node | `PBL-K4-03-Monitoring-Onion` | Internal Network `pbl-kel4`, **promiscuous `allow-all`** | Host-only `192.168.56.1` |
+
+Rincian lengkap (RAM/vCPU/snapshot/rollback, termasuk isu versi Security Onion 2.x):
+`docs/design/vm_config.md`.
 
 Catatan penting:
 
