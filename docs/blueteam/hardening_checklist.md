@@ -17,9 +17,9 @@
 | C. Data & Application | 3 | 0 | 0 | 3 |
 | **Total** | **10** | **0** | **0** | **10** |
 
-_Prasyarat: VM target **kini Ubuntu Server 26.04.1 LTS** (terpasang 20 Okt 2026 via
-autoinstall — lihat `docs/design/vm_config.md` §2.1), sehingga kontrol B-3 dapat dijalankan.
-Yang belum: IP statis `192.168.4.5` di guest (`vm_config.md` §5.1)._
+_Prasyarat terpenuhi: VM target **Ubuntu Server 26.04.1 LTS**, IP statis `192.168.4.5/24` sudah
+aktif, `sshd` berjalan, dan `iotadmin` punya sudo NOPASSWD (kemudahan lab — lihat
+`docs/design/vm_config.md`). Yang belum: stack replika (nginx/DVWA/MariaDB/Mosquitto)._
 
 ---
 

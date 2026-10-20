@@ -203,6 +203,20 @@ Pilih satu:
 | 4 | VM `Cybersecurity LabVM Worksation 20250409` tidak terdaftar | makan ~8 GB disk | hapus folder bila tidak dipakai |
 | 5 | Kredensial guest tidak tercatat | sesi S1 terhambat | isi tabel kredensial di bawah (jangan di-commit bila berisi password nyata) |
 
+### Akses operasional yang sudah dikonfigurasi (20 Okt 2026)
+
+| Item | Nilai | Catatan |
+|---|---|---|
+| IP lab Target Node | `192.168.4.5/24` di `enp0s3` | diterapkan via `/etc/netplan/60-pbl-lab.yaml` (mode 600), `netplan apply` sukses |
+| IP NAT | `10.0.3.15/24` di `enp0s8` | untuk update paket + SSH admin via port-forward `127.0.0.1:2222` |
+| Password `iotadmin` | `123` | **sengaja lemah** (kelemahan #1 untuk RT-02); diganti lewat root shell GRUB (`init=/bin/bash`) karena `cloud-init` di sistem ini disabled |
+| Sudo | `iotadmin ALL=NOPASSWD: ALL` di `/etc/sudoers.d/90-pbl-nopasswd` | keputusan operasional agar agent bisa bekerja tanpa memegang password |
+| sshd | aktif, password auth boleh | dipakai RT-02 |
+
+> ⚠ **Sebelum presentasi final:** putuskan apakah `NOPASSWD` dipertahankan. Untuk laporan,
+> lebih kuat bila dicatat sebagai kemudahan operasional lab yang **dicabut** setelah sesi uji,
+> karena kontrol A-2/A-4 mengarah ke akses berbasis key tanpa eskalasi bebas.
+
 ### Tabel kredensial (isi manual, JANGAN di-commit)
 
 | VM | Username | Password | Catatan |
