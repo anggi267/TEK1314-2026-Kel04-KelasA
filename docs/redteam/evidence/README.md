@@ -4,7 +4,7 @@ Diisi bertahap mulai Minggu 10, satu subfolder per skenario:
 
 ```
 rt01/  Reconnaissance (nmap)
-rt02/  Exploitation vsftpd 2.3.4 (Metasploit)
+rt02/  Exploitation kredensial lemah SSH (Hydra)
 rt03/  SQL injection dashboard (sqlmap/Burp)
 rt04/  MQTT spoof publish (mosquitto)
 rt05/  SYN flood terkontrol (hping3)

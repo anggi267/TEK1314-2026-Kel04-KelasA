@@ -18,19 +18,19 @@ Legenda status: `RENCANA` → `DIJALANKAN` → `TERVERIFIKASI`.
 |---|---|---|---|---|
 | 1. Serang (baseline) | `nmap -sS -p- -T4 --min-rate 1000 192.168.4.5` | Amati apakah scan terdeteksi | `redteam/evidence/rt01/rt01_nmap_full.txt`, `rt01_alert_baseline.png` | RENCANA |
 | 2. Deteksi | — | Cek Zeek `Port_Scan` notice & alert Suricata ET SCAN; catat bila **tidak** muncul | `rt01_zeek_notice.png` / `rt01_no_alert.md` | RENCANA |
-| 3. Analisis | Jelaskan tujuan: memetakan 20+ port & versi usang (vsftpd 2.3.4, MySQL 5.0.51a) | Root cause: tidak ada rate limit/firewall → pemindaian bebas; deteksi bergantung threshold | `rt01_analysis.md` | RENCANA |
+| 3. Analisis | Jelaskan tujuan: memetakan 20+ port & versi usang (nginx, MariaDB, Mosquitto, OpenSSH) | Root cause: tidak ada rate limit/firewall → pemindaian bebas; deteksi bergantung threshold | `rt01_analysis.md` | RENCANA |
 | 4. Respons | — | Terapkan B-1 (matikan service tak terpakai) + B-2 (ufw default deny) | `blueteam/evidence/B1_after_nmap_full.png`, `B2_after_ufw_status.png` | RENCANA |
 | 5. Verifikasi | Ulangi scan yang sama | Konfirmasi jumlah port terbuka turun & scan tetap terdeteksi | `rt01_nmap_after.txt`, `rt01_alert_after.png` | RENCANA |
 
-## RT-02 · Exploitation — vsftpd 2.3.4 backdoor (CVE-2011-2523)
+## RT-02 · Exploitation — kredensial lemah & eskalasi SSH
 
 | Tahap | Red Team | Blue Team | Bukti | Status |
 |---|---|---|---|---|
-| 1. Serang (baseline) | `use exploit/unix/ftp/vsftpd_234_backdoor` → shell root | Cek alert exploit & koneksi port 6200 | `rt02/rt02_msf_console.txt`, `rt02_alert_baseline.png` | RENCANA |
-| 2. Deteksi | — | Cari ET EXPLOIT vsftpd, `auth.log`, Zeek notice FTP | `rt02_alert.png`, `rt02_authlog.png` | RENCANA |
-| 3. Analisis | Teknik: backdoor pada banner 2.3.4, tanpa kredensial | Root cause: service FTP usang & terbuka ke seluruh subnet | `rt02_analysis.md` | RENCANA |
-| 4. Respons | — | B-1 matikan FTP, B-2 blokir 21, B-3 upgrade/hapus paket | `B1_after_nmap_full.png`, `B2_before_nmap_vs_after_nmap.png` | RENCANA |
-| 5. Verifikasi | Ulangi eksploit | Koneksi 21 `filtered`; eksploit gagal; alert tetap muncul | `rt02_msf_after_failed.txt`, `rt02_alert_after.png` | RENCANA |
+| 1. Serang (baseline) | `hydra -l iotadmin -P rockyou.txt ssh://192.168.4.5 -t 4 -f` | Cek `auth.log` & alert brute-force | `rt02/rt02_hydra_baseline.txt`, `rt02_alert_baseline.png` | RENCANA |
+| 2. Deteksi | — | Cari pola `Failed password` berulang lalu `Accepted password`; Zeek `conn.log` koneksi pendek beruntun | `rt02_authlog.png`, `rt02_conn_log.png` | RENCANA |
+| 3. Analisis | Teknik: password lemah + password auth aktif + user punya sudo | Root cause: kredensial lemah (kelemahan disengaja #1), tidak ada rate limit | `rt02_analysis.md` | RENCANA |
+| 4. Respons | — | A-2 key-only, A-4 fail2ban, B-3 password kuat, A-1 nonaktifkan root login | `A2_after_password_login_denied.png`, `A4_after_fail2ban_banned.png` | RENCANA |
+| 5. Verifikasi | Ulangi hydra & login manual | Ditahan/di-ban; password auth ditolak; `sudo -l` tidak lagi penuh | `rt02_hydra_after.txt`, `rt02_alert_after.png` | RENCANA |
 
 ## RT-03 · Web/API — SQL injection pada endpoint data sensor
 
@@ -69,7 +69,7 @@ Legenda status: `RENCANA` → `DIJALANKAN` → `TERVERIFIKASI`.
 | Skenario | Berhasil di Tahap 1? | Terdeteksi Tahap 2? | Mitigasi Tahap 4 | Gagal/terblokir di Tahap 5? | Kesimpulan |
 |---|---|---|---|---|---|
 | RT-01 | — | — | B-1, B-2 | — | — |
-| RT-02 | — | — | B-1, B-2, B-3 | — | — |
+| RT-02 | — | — | A-1, A-2, A-4, B-3 | — | — |
 | RT-03 | — | — | C-2, C-3 | — | — |
 | RT-04 | — | — | C-2, A-2, B-2 + rule | — | — |
 | RT-05 | — | — | ufw limit, syncookies | — | — |

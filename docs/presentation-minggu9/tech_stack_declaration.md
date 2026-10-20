@@ -1,56 +1,63 @@
 # Deklarasi Tech Stack & Replikasi — Kelompok 4 (TEK1314 Kelas A)
 
-**Pertemuan:** 9 (Checkpoint Fase 1 → Fase 2)
-**Subnet lab:** `192.168.4.0/24` (lihat `docs/design/ip_plan.md`)
-**Target Node replika:** `192.168.4.5` — Metasploitable2
+**Pertemuan:** 9 (Checkpoint Fase 1 → Fase 2) · **Revisi:** Minggu 9 (target diganti ke Ubuntu Server)
+**Subnet lab:** `192.168.4.0/24` · **Target Node:** `192.168.4.5` — Ubuntu Server LTS 26.04
 
 ---
 
-## 0. Konteks produk IoT (WAJIB DISESUAIKAN)
-
-> **Status: PERLU KONFIRMASI KELOMPOK.**
-> Bagian yang ditandai `[[ISI: ...]]` di bawah masih berupa asumsi kerja agar dokumen bisa
-> dipresentasikan. Ganti dengan produk IoT asli kelompok sebelum commit final.
-> Asumsi kerja saat ini: **sistem otomasi & monitoring budidaya (smart farming)** —
-> sensor kelembapan tanah + aktuator pompa, dengan backend server data, API gateway,
-> dan dashboard monitoring. Yang diamankan SOC adalah **backend-nya**, bukan sensor fisik.
-
 ## 1. Tabel Deklarasi Tech Stack (asli → replika)
 
-| # | Komponen Backend | Teknologi pada proyek IoT asli | Replikasi di Target Node (`192.168.4.5`) | Port | Catatan adaptasi |
+Karena replika memakai **Ubuntu Server**, komponen backend dapat dipetakan nyaris satu-satu.
+Yang perlu disesuaikan hanya `[[ISI: ...]]` (detail produk IoT asli kelompok).
+
+| # | Komponen Backend | Teknologi pada proyek IoT asli | Replika di Target Node (Ubuntu Server) | Port | Catatan |
 |---|---|---|---|---|---|
-| 1 | Sistem operasi server | Linux (Ubuntu Server 22.04 LTS) `[[ISI]]` | Metasploitable2 (Ubuntu 8.04, kernel 2.6) | — | Versi OS sengaja dibuat lama & rentan agar celah dapat didemonstrasikan; hardening tetap dilakukan di atasnya |
-| 2 | Web dashboard monitoring | Aplikasi web (PHP/Laravel atau Node.js) + Nginx `[[ISI]]` | Apache 2.2 + PHP 5.2, DVWA / Mutillidae | 80/tcp | DVWA berperan sebagai "dashboard" dengan form login, session, dan query DB — cukup untuk mereplika permukaan serangan web |
-| 3 | API gateway | REST API (endpoint `/api/sensor`, `/api/aktuator`) `[[ISI]]` | Endpoint PHP di DVWA + phpMyAdmin | 80/tcp, 8080/tcp | Request API dimodelkan sebagai parameter GET/POST yang dapat diuji injeksi |
-| 4 | Database / penyimpanan data | MySQL 8 / PostgreSQL 14 `[[ISI]]` | MySQL 5.0.51a | 3306/tcp | Menyimpan tabel `users` & `sensor_readings`; kredensial default `root` tanpa password = celah nyata untuk diuji |
-| 5 | Protokol komunikasi sensor | MQTT 3.1.1 (Mosquitto) + HTTP REST `[[ISI]]` | **Ditambah di Fase 2:** Mosquitto broker di port 1883 (instalasi paket pada VM target) | 1883/tcp | Metasploitable2 belum membawa broker MQTT; penambahan ini yang membuat replika relevan dengan protokol IoT. Bila tidak memungkinkan, topik MQTT diganti uji HTTP REST saja |
-| 6 | Autentikasi pengguna | JWT / session + MFA dashboard `[[ISI]]` | Session PHP DVWA + akun default `admin`/`password`, `msfadmin`/`msfadmin` | 80, 22 | Dipakai untuk menguji default credential & brute-force |
-| 7 | Manajemen jarak jauh | SSH (key-based, non-root) `[[ISI]]` | OpenSSH 4.7p1, login password aktif | 22/tcp | Menjadi objek hardening kategori A |
-| 8 | Transfer berkas firmware/backup | SFTP / FTP internal `[[ISI]]` | vsftpd 2.3.4 (backdoor CVE-2011-2523) | 21/tcp | Contoh teknis "service usang yang wajib dipatch/dinonaktifkan" |
-| 9 | Telemetri & log | Syslog + agent monitoring `[[ISI]]` | Syslog Metasploitable2 → diteruskan ke Security Onion | 514/udp | Menjadi sumber log Blue Team selain sensor jaringan |
-| 10 | Segmentasi & kontrol jaringan | VLAN terpisah untuk perangkat lapangan vs server `[[ISI]]` | Satu switch, satu subnet `192.168.4.0/24` | — | Keterbatasan lab: segmentasi disimulasikan lewat firewall host (ufw) + aturan deny, bukan VLAN fisik |
+| 1 | Sistem operasi server | Ubuntu Server LTS 26.04 `[[ISI]]` | Ubuntu Server LTS 26.04 | — | Sama jenis; dukungan keamanan aktif → `apt upgrade` bisa dibuktikan (B-3) |
+| 2 | Web dashboard monitoring | Aplikasi web (Nginx + PHP/Node) `[[ISI]]` | Nginx + PHP-FPM + DVWA sebagai dashboard | 80/tcp | DVWA dipakai karena *vulnerable by design* → bahan RT-03 |
+| 3 | API gateway | REST: `/api/sensor`, `/api/aktuator` `[[ISI]]` | `api.php` (parameter `?id=`) di direktori dashboard | 80/tcp | Endpoint sengaja dibuat tanpa prepared statement |
+| 4 | Database / penyimpanan | MySQL 8 / MariaDB `[[ISI]]` | MariaDB — database `iot_db` (`users`, `sensor_readings`) | 3306/tcp | Mendengarkan di semua interface (kelemahan disengaja #4) |
+| 5 | Protokol komunikasi sensor | MQTT 3.1.1 (Mosquitto) `[[ISI]]` | Mosquitto, `allow_anonymous true`, tanpa ACL topik | 1883/tcp | Kelemahan disengaja #3 → RT-04; ditutup lewat C-2 |
+| 6 | Autentikasi pengguna | JWT / session + role `[[ISI]]` | Session login dashboard + user OS `iotadmin` | 80, 22 | Password lemah `iotadmin123` (kelemahan disengaja #1) |
+| 7 | Manajemen jarak jauh | SSH key-based, non-root `[[ISI]]` | OpenSSH, password auth aktif, port 22 | 22/tcp | Objek kontrol A-1…A-4 |
+| 8 | Telemetri & log | Syslog + agent monitoring `[[ISI]]` | syslog + `auth.log` → diteruskan ke Security Onion | 514/udp | Sumber log Blue Team |
+| 9 | Segmentasi & kontrol jaringan | VLAN perangkat lapangan vs server `[[ISI]]` | Satu segmen Internal Network `pbl-kel4` + firewall host | — | Keterbatasan lab: dipisahkan di host (ufw), bukan VLAN fisik |
+| 10 | Pembaruan firmware/perangkat | OTA update bertanda tangan `[[ISI]]` | Tidak direplikasi | — | Dinyatakan terbuka di presentasi |
 
-## 2. Alasan replika memakai Metasploitable2
+## 2. Kelemahan yang sengaja dipasang (bukan kelalaian)
 
-1. **Konsistensi dengan Minggu 4** — OS target sudah dikunci di `docs/design/ip_plan.md` dan
-   digambar di `docs/design/topology.png`. Mengganti target sekarang berarti membatalkan
-   deliverable Minggu 4 (nilai arsitektur 20%).
-2. **Celah nyata, bukan simulasi main-main** — setiap temuan Red Team dapat dikaitkan dengan
-   CVE/konfigurasi default yang benar-benar ada (vsftpd 2.3.4, MySQL root kosong, DVWA SQLi
-   tingkat low), sehingga rencana serangan Fase 2 dapat dinilai kelayakannya oleh dosen.
-3. **Ringan** — 1 VM melayani peran web, DB, dan manajemen sekaligus; cocok dengan RAM laptop
-   anggota (kendala yang sudah dicatat sejak Minggu 4).
+Replika **harus** punya celah agar skenario Red Team Bagian IX punya sasaran nyata. Daftar
+lengkap ada di `docs/design/replica_setup.md` Bagian 3:
 
-## 3. Batasan replika (dinyatakan terbuka di presentasi)
+| # | Kelemahan | Skenario | Ditutup oleh |
+|---|---|---|---|
+| 1 | Password lemah `iotadmin` + SSH password auth | RT-02 | A-2, A-4 |
+| 2 | SQL injection `api.php` / DVWA level low | RT-03 | C-2, C-3 |
+| 3 | MQTT anonymous tanpa ACL | RT-04 | C-2 |
+| 4 | MySQL terbuka di semua interface | RT-03 | B-2 |
+| 5 | Service tidak terpakai tetap hidup | RT-01 | B-1 |
+| 6 | Tanpa rate limit di dashboard | RT-05 | ufw limit |
 
-- Tidak ada perangkat sensor fisik, LoRaWAN, atau koneksi ke Mitra — seluruh uji dilakukan di
-  jaringan tertutup `192.168.4.0/24` (sesuai Prinsip Simulasi vs Sistem Nyata, Bagian III panduan).
-- TLS/HTTPS tidak direplikasi pada Fase 2 (dashboard berjalan di HTTP) — justru menjadi bahan
-  analisis Blue Team: traffic kredensial terlihat di Wireshark.
-- Broker MQTT baru ditambahkan pada Fase 2, sehingga skenario RT-04 (MQTT spoofing) berstatus
-  *kondisional* sampai broker terpasang.
+## 3. Mengapa Ubuntu Server (bukan Metasploitable2)
 
-## 4. Kesepakatan tim
+1. **Konsisten dengan narasi IoT** — backend yang diamankan memang Ubuntu/Nginx/MySQL/MQTT,
+   bukan kumpulan service acak.
+2. **Hardening dapat dibuktikan dengan tool standar** — `ufw`, `fail2ban`, `systemctl`,
+   `apt upgrade` semuanya tersedia dan berfungsi (Metasploitable2 berbasis Ubuntu 8.04 yang
+   repositorinya sudah EOL, sehingga beberapa kontrol mustahil dieksekusi).
+3. **Tiga kategori hardening (A/B/C) dapat diuji ujung ke ujung** — termasuk patching dan
+   pembatasan permukaan serangan di level aplikasi.
+4. **Risiko yang dikelola:** karena OS tidak rentan bawaan, kelemahan dipasang eksplisit
+   (Bagian 2). Ini justru lebih jujur: setiap celah punya kontrol penutup yang diuji.
+
+## 4. Batasan replika (dinyatakan terbuka di presentasi)
+
+- Tidak ada perangkat sensor fisik, LoRaWAN, atau koneksi ke Mitra — semua uji di jaringan
+  tertutup `192.168.4.0/24`.
+- TLS tidak digunakan pada Fase 2 (dashboard HTTP) → kredensial terlihat di Wireshark;
+  ini menjadi temuan Blue Team, bukan kelalaian tak tercatat.
+- Tidak ada OTA update bertanda tangan; replika berhenti pada "patch OS + patch aplikasi".
+
+## 5. Kesepakatan tim
 
 | Peran | Nama | Menyetujui pemetaan di atas |
 |---|---|---|

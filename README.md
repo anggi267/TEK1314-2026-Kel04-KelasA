@@ -18,12 +18,17 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 
 | Host | IP | OS | Peran |
 |---|---|---|---|
-| Target Server (replika backend IoT) | `192.168.4.5` | Metasploitable2 | Blue Team |
+| Target Server (replika backend IoT) | `192.168.4.5` | Ubuntu Server LTS 26.04 | Blue Team |
 | Attacker Node | `192.168.4.100` | Kali Linux | Red Team |
 | Monitoring Node | `192.168.4.200` | Security Onion 3.2 | Blue Team |
 
 - [`docs/design/topology.png`](docs/design/topology.png) — diagram topologi (Minggu 4)
-- [`docs/design/ip_plan.md`](docs/design/ip_plan.md) — skema IP (Minggu 4)
+- [`docs/design/ip_plan.md`](docs/design/ip_plan.md) — skema IP (Minggu 4) + revisi Minggu 9
+- [`docs/design/topology-v2.png`](docs/design/topology-v2.png) — diagram revisi (target Ubuntu Server, segmen `pbl-kel4`)
+- [`docs/design/replica_setup.md`](docs/design/replica_setup.md) — cara membangun replika backend IoT yang sengaja rentan
+
+> Catatan: VM **CyberOps Workstation / Cybersecurity LabVM** hanya alat praktikum Minggu 2–3 —
+> **bukan** bagian topologi PBL. Topologi yang dinilai tetap tiga node: Attacker, Target, Monitoring.
 
 ## Tim
 
@@ -50,6 +55,9 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 
 - **Dokumen & rencana:** lengkap (tech stack, 10 kontrol hardening, 5 skenario serangan,
   template purple team log, logbook).
+- **Perubahan Minggu 9–10:** target diganti dari Metasploitable2 ke **Ubuntu Server** (replika
+  backend IoT). VM target saat ini masih Ubuntu 25.04 yang sudah EOL → harus dipasang ulang ke
+  26.04 LTS sebelum kontrol B-3 dapat dibuktikan (`docs/design/replica_setup.md`).
 - **Eksekusi:** hardening dan serangan **belum dijalankan** — VM lab belum dinyalakan ulang
   setelah UTS. Perintah dan skema bukti sudah disiapkan agar eksekusi Minggu 10 tinggal
   dijalankan dan di-screenshot. Status `Selesai` pada checklist hanya boleh diisi bila file

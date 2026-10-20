@@ -18,7 +18,7 @@ baru memitigasi semuanya — bukti Tahap 5 akan kacau karena kondisi hardening b
 | **S0** | sebelum presentasi Minggu 9 | 60' | Push repo, verifikasi akses dosen, gladi slide | Lead |
 | **S1** | Minggu 10 | 150' | Snapshot, baseline normal, hardening prioritas (5 kontrol) | Blue |
 | **S2** | Minggu 10 | 90' | Loop RT-01 (recon) → deteksi → mitigasi → verifikasi | Red mulai, Blue tutup |
-| **S3** | Minggu 10/11 | 120' | Loop RT-02 (vsftpd) → deteksi → mitigasi → verifikasi | Red mulai, Blue tutup |
+| **S3** | Minggu 10/11 | 120' | Loop RT-02 (brute-force SSH) → deteksi → mitigasi → verifikasi | Red mulai, Blue tutup |
 | **S4** | Minggu 11 | 150' | Loop RT-03 (SQLi) + RT-04 (MQTT) | Red + Blue |
 | **S5** | Minggu 11 | 60' | Loop RT-05 (SYN flood), rekap, Vulnerability Assessment Report | Blue |
 
@@ -96,15 +96,15 @@ mengetik, timebox dan pencatatan akan jatuh — dan itu justru 10% nilai kerja s
 | # | Langkah | Perintah | Bukti |
 |---|---|---|---|
 | B1.1 | Snapshot target **sebelum** apa pun | VirtualBox/VMware snapshot `snap-s1-<tanggal>` | screenshot nama snapshot |
-| B1.2 | Pastikan target & sensor hidup, IP benar | `ping 192.168.4.5`, `ip a` di Onion | screenshot |
+| B1.2 | Pastikan NIC di Internal Network `pbl-kel4` & IP guest benar | `ip -brief a` di tiap VM, `ping 192.168.4.5`, `nmap -sn 192.168.4.0/24` | screenshot `ip a` + ping |
 | B1.3 | Rekam baseline normal 15 menit (belum ada serangan) | `ping -i 5 192.168.4.5` + 10× buka dashboard + query API tiap 10 s + capture tcpdump di sensor | `baseline_minggu9.pcap`, `baseline_summary.md` |
 | B1.4 | Jalankan perekam baseline | `sudo bash scripts/blueteam/01_rekam_baseline.sh` | `evidence/before/00..07` |
-| B1.5 | **A-2** pasang SSH key, uji login key **sebelum** mematikan password | `ssh-copy-id -i ~/.ssh/pbl_kel4.pub msfadmin@192.168.4.5` lalu `ssh -i ~/.ssh/pbl_kel4 msfadmin@192.168.4.5` | `A2_after_key_login_ok.png` |
+| B1.5 | **A-2** pasang SSH key, uji login key **sebelum** mematikan password | `ssh-copy-id -i ~/.ssh/pbl_kel4.pub iotadmin@192.168.4.5` lalu `ssh -i ~/.ssh/pbl_kel4 iotadmin@192.168.4.5` | `A2_after_key_login_ok.png` |
 | B1.6 | **A-2** matikan password auth, **buka sesi SSH lama jangan ditutup** | `sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config; sudo /etc/init.d/ssh restart` | `A2_after_password_login_denied.png` |
 | B1.7 | **B-2** siapkan rule ufw **sebelum** `enable` (port 2222 wajib allow) | lihat blok perintah di checklist B-2 | `B2_after_ufw_status.png` |
 | B1.8 | Uji dari Kali: SSH 2222 masih bisa, port lain tertutup | `nmap -sS -p1-1024 192.168.4.5` | `B2_before_nmap_vs_after_nmap.png` |
 | B1.9 | **B-1** matikan service tak terpakai (telnet, rsh, tftp, smtp, ircd, distccd, tomcat) | checklist B-1 | `B1_after_nmap_full.txt` (jumlah port turun) |
-| B1.10 | **B-3** patch & hapus kredensial default — **hati-hati DVWA** | ganti password root MySQL, lalu **update `config/config.inc.php` DVWA** agar dashboard tidak mati | `B3_after_mysql_access_denied.png`, `B3_after_dvwa_still_works.png` |
+| B1.10 | **B-3** patch paket & hapus kredensial default | `apt upgrade` + `mysql_secure_installation` + ganti password `iotadmin` (cek `apt list --upgradable` kosong) | `B3_after_apt_upgraded.txt`, `B3_after_mysql_secure.png` |
 | B1.11 | **C-1** pindahkan kredensial aplikasi ke `.env` (chmod 600) | checklist C-1 | `C1_after_env_file_chmod600.png` |
 | B1.12 | Rekam kondisi after | `sudo bash scripts/blueteam/02_rekam_after.sh` | `evidence/after/00..09` |
 | B1.13 | Update status checklist + commit | ubah kolom Status hanya untuk yang buktinya lengkap | commit `feat(blueteam): baseline + 5 hardening controls with evidence` |

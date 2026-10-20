@@ -147,21 +147,21 @@
       <th style="width:31%">Replika di Target Node</th>
       <th style="width:15%">Port</th>
     </tr>
-    <tr><td><strong>OS server</strong></td><td>Ubuntu Server 22.04 LTS</td><td>Metasploitable2 (Ubuntu 8.04)</td><td class="mono">—</td></tr>
-    <tr><td><strong>Dashboard</strong></td><td>Web app + Nginx</td><td>Apache 2.2 + PHP (DVWA/Mutillidae)</td><td class="mono">80</td></tr>
-    <tr><td><strong>API gateway</strong></td><td>REST <span class="mono">/api/sensor</span>, <span class="mono">/api/aktuator</span></td><td>Endpoint PHP + phpMyAdmin</td><td class="mono">80, 8080</td></tr>
-    <tr><td><strong>Database</strong></td><td>MySQL 8 / PostgreSQL</td><td>MySQL 5.0.51a (root tanpa password)</td><td class="mono">3306</td></tr>
-    <tr><td><strong>Protokol sensor</strong></td><td>MQTT 3.1.1 (Mosquitto)</td><td><span class="chip grn">Fase 2</span> Mosquitto dipasang di VM target</td><td class="mono">1883</td></tr>
-    <tr><td><strong>Manajemen jarak jauh</strong></td><td>SSH key-based, non-root</td><td>OpenSSH 4.7p1, password login aktif</td><td class="mono">22</td></tr>
+    <tr><td><strong>OS server</strong></td><td>Ubuntu Server LTS 26.04</td><td>Ubuntu Server LTS 26.04 (1:1)</td><td class="mono">—</td></tr>
+    <tr><td><strong>Dashboard</strong></td><td>Web app + Nginx</td><td>Nginx + PHP-FPM + DVWA</td><td class="mono">80</td></tr>
+    <tr><td><strong>API gateway</strong></td><td>REST <span class="mono">/api/sensor</span>, <span class="mono">/api/aktuator</span></td><td><span class="mono">api.php</span> (query <span class="mono">?id=</span>)</td><td class="mono">80</td></tr>
+    <tr><td><strong>Database</strong></td><td>MySQL 8 / MariaDB</td><td>MariaDB <span class="mono">iot_db</span> · bind 0.0.0.0</td><td class="mono">3306</td></tr>
+    <tr><td><strong>Protokol sensor</strong></td><td>MQTT 3.1.1 (Mosquitto)</td><td>Mosquitto · <span class="mono">allow_anonymous true</span></td><td class="mono">1883</td></tr>
+    <tr><td><strong>Manajemen jarak jauh</strong></td><td>SSH key-based, non-root</td><td>OpenSSH · password auth aktif · user <span class="mono">iotadmin</span></td><td class="mono">22</td></tr>
   </table>
 
   <div class="grid2" style="margin-top:16px">
     <div class="card" style="border-color:rgba(0,229,160,.3)">
-      <h3>Mengapa Metasploitable2 dipertahankan</h3>
+      <h3>Mengapa Ubuntu Server</h3>
       <ul>
-        <li>Konsistensi dengan keputusan Minggu 4 (topologi &amp; ip_plan sudah dikunci)</li>
-        <li>Celah nyata &amp; dapat dirujuk CVE — rencana serangan jadi terukur</li>
-        <li>Ringan: 1 VM melayani web + DB + manajemen</li>
+        <li>Replika benar-benar menyerupai backend IoT (nginx, MariaDB, Mosquitto)</li>
+        <li><span class="mono">ufw</span>, <span class="mono">fail2ban</span>, <span class="mono">apt</span> berfungsi → hardening dapat dibuktikan</li>
+        <li>Kelemahan dipasang sengaja &amp; terdaftar, bukan kebetulan</li>
       </ul>
     </div>
     <div class="card">
@@ -198,9 +198,9 @@
 
     <div class="card" style="flex:1;text-align:center;border-color:rgba(106,169,255,.4)">
       <div class="chip blue">Target Node</div>
-      <p style="margin-top:8px;font-size:15px;color:#E6EDF3"><strong>Metasploitable2</strong></p>
+      <p style="margin-top:8px;font-size:15px;color:#E6EDF3"><strong>Ubuntu Server 26.04</strong></p>
       <p class="mono" style="font-size:15px;color:#8DC0FF">192.168.4.5</p>
-      <p style="margin-top:6px;font-size:11.5px">replika backend IoT · 20+ port terbuka</p>
+      <p style="margin-top:6px;font-size:11.5px">nginx · MariaDB · MQTT · SSH</p>
     </div>
 
     <div class="card" style="flex:1;text-align:center;border-color:rgba(0,229,160,.35)">
@@ -216,16 +216,16 @@
       <h3>Tabel IP (tetap sejak Minggu 4)</h3>
       <table>
         <tr><th>Host</th><th>IP</th><th>OS</th><th>Peran</th></tr>
-        <tr><td>Target Server</td><td class="mono">192.168.4.5</td><td>Metasploitable2</td><td>Blue</td></tr>
+        <tr><td>Target Server</td><td class="mono">192.168.4.5</td><td>Ubuntu Server</td><td>Blue</td></tr>
         <tr><td>Attacker</td><td class="mono">192.168.4.100</td><td>Kali Linux</td><td>Red</td></tr>
         <tr><td>Monitoring</td><td class="mono">192.168.4.200</td><td>Security Onion</td><td>Blue</td></tr>
       </table>
     </div>
     <div class="card">
       <h3>Catatan visibilitas sensor</h3>
-      <p>Sensor berada di segmen yang sama agar seluruh trafik Attacker→Target terlihat di
-      Layer 2 (tanpa perlu SPAN port). Konsekuensinya: trafik monitoring juga terlihat, sehingga
-      rule alert harus mengecualikan <span class="mono">192.168.4.200</span>.</p>
+      <p>Sensor memakai NIC1 di Internal Network <span class="mono">pbl-kel4</span> dengan
+      promiscuous <span class="mono">allow-all</span> — syarat agar trafik Attacker→Target terlihat.
+      NIC2 host-only dipakai untuk membuka web UI. Trafik sensor sendiri harus dikecualikan dari rule alert.</p>
     </div>
   </div>
 
@@ -329,7 +329,7 @@
     <h3>Perintah demo (ringkas)</h3>
     <p class="mono" style="color:#7FE9C4;font-size:12px;line-height:1.9">
       sudo tcpdump -i eth0 -nn host 192.168.4.5 &amp;&amp; ping -c 5 192.168.4.5<br>
-      ssh msfadmin@192.168.4.5 "sudo ss -tulpn" &nbsp;|&nbsp; nmap -sV 192.168.4.5<br>
+      ssh iotadmin@192.168.4.5 "sudo ss -tulpn" &nbsp;|&nbsp; nmap -sV 192.168.4.5<br>
       # Security Onion → Hunt → query: event.dataset:conn source.ip:192.168.4.100
     </p>
   </div>
@@ -354,14 +354,14 @@
     </tr>
     <tr>
       <td class="mono">RT-02</td><td>Exploitation</td>
-      <td>Backdoor CVE-2011-2523 + fallback default cred · <span class="mono">Metasploit</span>, <span class="mono">Hydra</span></td>
-      <td class="mono">:21 vsftpd 2.3.4 → root shell :6200</td>
-      <td>ET EXPLOIT vsftpd, auth.log</td>
+      <td>Brute-force kredensial lemah → shell + sudo · <span class="mono">Hydra</span>, Metasploit</td>
+      <td class="mono">:22 user iotadmin (→ :2222)</td>
+      <td>auth.log Failed→Accepted, Zeek</td>
     </tr>
     <tr>
       <td class="mono">RT-03</td><td>Web / API</td>
       <td>SQL injection pada endpoint data sensor · <span class="mono">sqlmap</span>, Burp</td>
-      <td class="mono">http://192.168.4.5/dvwa/ (level low)</td>
+      <td class="mono">http://192.168.4.5/iot-dashboard/</td>
       <td>ET WEB_SERVER SQLi, Zeek http.log</td>
     </tr>
     <tr>
@@ -407,7 +407,7 @@
     <div class="card">
       <h3>Kendala</h3>
       <table>
-        <tr><td><strong>Target generik vs tuntutan IoT</strong></td><td>Metasploitable2 dipetakan ke komponen backend IoT; MQTT ditambah di Fase 2</td></tr>
+        <tr><td><strong>Target generik vs tuntutan IoT</strong></td><td>Target diganti ke Ubuntu Server; kelemahan dipasang sengaja agar skenario tetap punya sasaran</td></tr>
         <tr><td><strong>RAM laptop</strong></td><td>3 VM tidak bisa jalan bersamaan → Security Onion dijadwalkan bergantian</td></tr>
         <tr><td><strong>Jeda UTS</strong></td><td>Lab idle 2 minggu → perintah &amp; skema bukti disiapkan lebih dulu</td></tr>
         <tr><td><strong>Deteksi MQTT</strong></td><td>Tidak ada signature bawaan → harus tulis rule kustom</td></tr>
