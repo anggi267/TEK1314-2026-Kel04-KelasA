@@ -17,8 +17,9 @@
 | C. Data & Application | 3 | 0 | 0 | 3 |
 | **Total** | **10** | **0** | **0** | **10** |
 
-_Prasyarat yang masih menggantung: VM target saat ini berisi Ubuntu 25.04 (EOL) dan belum
-dipasang ulang ke 26.04 LTS. Kontrol B-3 tidak bisa dibuktikan sebelum pemasangan ulang._
+_Prasyarat: VM target **kini Ubuntu Server 26.04.1 LTS** (terpasang 20 Okt 2026 via
+autoinstall — lihat `docs/design/vm_config.md` §2.1), sehingga kontrol B-3 dapat dijalankan.
+Yang belum: IP statis `192.168.4.5` di guest (`vm_config.md` §5.1)._
 
 ---
 
@@ -223,9 +224,8 @@ menampilkan percobaan login Red Team dan log yang sama muncul di Security Onion.
 
 ## F. Catatan jujur untuk presentasi
 
-1. Seluruh kontrol di atas **belum dieksekusi** pada commit Minggu 9 — dan sekarang ada satu
-   prasyarat tambahan: VM target harus dipasang ulang ke Ubuntu 26.04 LTS (yang terpasang
-   sekarang 25.04, sudah EOL sejak Januari 2026).
+1. Seluruh kontrol di atas **belum dieksekusi**. OS target sudah memenuhi prasyarat
+   (Ubuntu 26.04.1 LTS), tetapi IP statis lab dan stack replika belum dipasang.
 2. Bila waktu sempit, prioritas: **B-3, A-2, B-1, B-2, C-2** (mencakup 3 kategori, dampak
    terbesar, dan langsung menutup kelemahan yang dipakai RT-02/RT-03/RT-04).
 3. Untuk target Ubuntu, `ufw`/`fail2ban`/`sysctl` tersedia normal — tidak perlu jalur cadangan

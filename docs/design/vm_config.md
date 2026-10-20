@@ -12,7 +12,7 @@ Perubahan yang **belum** bisa dilakukan dari host (butuh login ke guest) dicatat
 
 | # | Nama VM (baru) | Nama lama | Peran | OS | RAM | vCPU | NIC 1 | NIC 2 | Snapshot |
 |---|---|---|---|---|---|---|---|---|---|
-| 01 | `PBL-K4-01-Target-Ubuntu` | `Target node` | Target Node / replika backend IoT | Ubuntu 25.04 *(akan dipasang ulang ke 26.04 LTS)* | 2048 MB | 2 | Internal Network `pbl-kel4` | NAT | `00-clean-base` |
+| 01 | `PBL-K4-01-Target-Ubuntu` | `Target node` | Target Node / replika backend IoT | **Ubuntu Server 26.04.1 LTS** (kernel 7.0.0-38) | 2048 MB | 2 | Internal Network `pbl-kel4` | NAT (+PF 2222→22) | `10-ubuntu-2604-terpasang` |
 | 02 | `PBL-K4-02-Attacker-Kali` | `kali-linux-2026.2-virtualbox-amd64` | Attacker Node | Kali Linux 2026.2 | 2048 MB | 2 | Internal Network `pbl-kel4` | NAT | `00-clean-base` |
 | 03 | `PBL-K4-03-Monitoring-Onion` | `CyberOps Security Onion` | Monitoring Node | Security Onion **2.x** (basis Ubuntu 16.04) | 6144 MB | 2 | Internal Network `pbl-kel4`, promisc **allow-all** | Host-only `192.168.56.1` | `00-clean-base` |
 
@@ -31,9 +31,31 @@ PBL-K4-03-Monitoring-Onion mac 0800270433F8  intnet1=pbl-kel4  promisc=allow-all
 | `Cybersecurity LabVM Worksation 20230210` | terdaftar, mati, NIC1 NAT, RAM 2 GB | CyberOps Workstation — alat praktikum Minggu 2–3, bukan node topologi |
 | `Cybersecurity LabVM Worksation 20250409` | **tidak terdaftar** di VirtualBox | salinan lama; boleh dihapus bila tidak diperlukan (hemat ~8 GB) |
 
+### 2.1 Hasil instalasi (verifikasi via SSH 127.0.0.1:2222)
+
+```
+hostname : target-iot
+OS       : Ubuntu 26.04.1 LTS
+kernel   : 7.0.0-38-generic
+user     : iotadmin (adm, cdrom, sudo, dip, plugdev, users, lxd)
+disk     : /dev/sda2  25G, terpakai 7,3G (32%)
+sshd     : OpenSSH 10.2p1, listen 0.0.0.0:22
+timezone : Asia/Jakarta (WIB)
+```
+
+Kendala yang ditemukan saat instalasi (penting bila mengulang):
+
+| Gejala | Penyebab sebenarnya | Solusi |
+|---|---|---|
+| Berhenti di `Loading essential drivers` | floppy controller aktif tanpa media | `modifyvm --floppy disabled` |
+| Lama tanpa menulis disk | subiquity menunggu jawaban `Continue with autoinstall? (yes\|no)` | jawab `yes` di konsol (scancode `15 95 12 92 1f 9f` + `1c 9c`) |
+| DVD tidak bootable | ISO dipindah ke SATA saat port diubah | ISO installer di **IDE 0-1**, seed di **IDE 1-0**, disk di **IDE 0-0** |
+| Menggantung di `wait_for_apply` | NIC lab (intnet) tanpa DHCP | sementara `--nic1 none` saat install |
+| Ekstraksi macet di disk dinamis | disk dinamis + RAM 3 GB | disk **fixed** + RAM 4 GB + 4 vCPU saat install |
+
 ---
 
-## 2. Perubahan yang diterapkan (before → after)
+## 3. Perubahan yang diterapkan (before → after)
 
 | Item | Sebelum | Sesudah | Alasan |
 |---|---|---|---|
@@ -107,19 +129,29 @@ CyberOps Workstation, dan **bukan** Security Onion 3.2. Konsekuensinya dicatat d
 Tidak ada kredensial guest yang tersimpan, jadi langkah ini harus dijalankan manual saat VM
 dinyalakan. Urutannya penting: **NIC dulu, baru uji sensor.**
 
-### 5.1 Target Node — `PBL-K4-01-Target-Ubuntu`
+### 5.1 Target Node — `PBL-K4-01-Target-Ubuntu` (OS sudah terpasang, tinggal IP)
+
+Login console sebagai `iotadmin`, lalu tempel satu blok ini:
 
 ```bash
-ip -brief a                     # cek nama interface (biasanya enp0s3 = lab, enp0s8 = NAT)
-sudo tee /etc/netplan/50-pbl.yaml >/dev/null <<'EOF'
+sudo tee /etc/netplan/60-pbl-lab.yaml >/dev/null <<'YAML'
 network:
   version: 2
   ethernets:
-    enp0s3: { dhcp4: false, addresses: [192.168.4.5/24] }
-    enp0s8: { dhcp4: true }
-EOF
-sudo netplan apply && ip -brief a
+    enp0s3:
+      dhcp4: false
+      addresses: [192.168.4.5/24]
+      optional: true
+YAML
+sudo chmod 600 /etc/netplan/60-pbl-lab.yaml
+sudo netplan apply
+ip -4 -br a                  # harapan: enp0s3 = 192.168.4.5/24, enp0s8 tetap 10.0.3.15
+ping -c 3 192.168.4.100      # setelah Kali diberi IP 192.168.4.100
 ```
+
+> Kenapa tidak diotomasi: Hermes diblokir kebijakan saat mencoba mengirim password ke `sudo -S`.
+> Alternatif agar bisa otomatis: isi `SUDO_PASSWORD` di `~/.hermes/.env`.
+> Setelah IP aktif, lanjutkan stack replika (`docs/design/replica_setup.md`); `apt` sudah berfungsi.
 
 ### 5.2 Attacker Node — `PBL-K4-02-Attacker-Kali`
 
@@ -164,7 +196,8 @@ Pilih satu:
 
 | # | Isu | Dampak | Rekomendasi |
 |---|---|---|---|
-| 1 | Target masih **Ubuntu 25.04** (EOL Jan 2026) | kontrol B-3 (`apt upgrade`) tidak bisa dibuktikan | pasang ulang 26.04 LTS sebelum sesi S1 |
+| 1 | Target dulu Ubuntu 25.04 (EOL) | kontrol B-3 tidak bisa dibuktikan | **SELESAI** — kini Ubuntu 26.04.1 LTS terpasang, `apt upgrade` berfungsi |
+| 1b | IP statis `192.168.4.5` belum aktif di guest | node lab belum bisa saling ping | jalankan blok Bagian 5.1 |
 | 2 | Monitoring memakai **Security Onion 2.x** (EOL) | tidak ada update signature; sebagian panduan 3.x tidak berlaku | tetap dipakai bila sensor terbukti menangkap trafik; sebutkan versinya di laporan |
 | 3 | Tiga VM hidup bersamaan butuh ≈10 GB RAM (9 GB bebas) | salah satu VM bisa lambat/OOM | tutup aplikasi berat; atau jalankan Monitoring + satu node lain bergantian |
 | 4 | VM `Cybersecurity LabVM Worksation 20250409` tidak terdaftar | makan ~8 GB disk | hapus folder bila tidak dipakai |

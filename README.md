@@ -56,9 +56,9 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 
 - **Dokumen & rencana:** lengkap (tech stack, 10 kontrol hardening, 5 skenario serangan,
   template purple team log, logbook).
-- **Perubahan Minggu 9–10:** target diganti dari Metasploitable2 ke **Ubuntu Server** (replika
-  backend IoT). VM target saat ini masih Ubuntu 25.04 yang sudah EOL → harus dipasang ulang ke
-  26.04 LTS sebelum kontrol B-3 dapat dibuktikan (`docs/design/replica_setup.md`).
+- **Perubahan Minggu 9–10:** target diganti dari Metasploitable2 ke **Ubuntu Server**, dan
+  **Ubuntu Server 26.04.1 LTS sudah terpasang** (autoinstall, hostname `target-iot`, user
+  `iotadmin`). Sisa: IP statis `192.168.4.5` + stack replika — lihat `docs/design/vm_config.md`.
 - **Eksekusi:** hardening dan serangan **belum dijalankan** — VM lab belum dinyalakan ulang
   setelah UTS. Perintah dan skema bukti sudah disiapkan agar eksekusi Minggu 10 tinggal
   dijalankan dan di-screenshot. Status `Selesai` pada checklist hanya boleh diisi bila file
