@@ -1,0 +1,11 @@
+total: 440
+icmp: 40
+tcp: 400
+http: 240
+first: 17:05:07.612919
+last: 17:05:48.957678
+srcs: 260 192.168.4.100
+    180 192.168.4.5
+sample: 17:05:07.656376 IP 192.168.4.100.34884 > 192.168.4.5.80: Flags [S], seq 2236195093, win 64240, options [mss 1460,sackOK,TS val 1138380501 ecr 0,nop,wscale 8], length 0
+17:05:07.656456 IP 192.168.4.5.80 > 192.168.4.100.34884: Flags [S.], seq 2758904524, ack 2236195094, win 65160, options [mss 1460,sackOK,TS val 3046301819 ecr 1138380501,nop,wscale 8], length 0
+17:05:07.664385 IP 192.168.4.100.34884 > 192.168.4.5.80: Flags [.], ack 1, win 251, options [nop,nop,TS val 1138380509 ecr 3046301819], length 0

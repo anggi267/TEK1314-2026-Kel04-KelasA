@@ -13,13 +13,22 @@
 | Kategori | Jumlah kontrol | Selesai | Sebagian | Belum |
 |---|---|---|---|---|
 | A. Access & Authentication | 4 | 0 | 0 | 4 |
-| B. Service & Attack Surface | 3 | 0 | 0 | 3 |
+| B. Service & Attack Surface | 3 | 0 | 3 | 0 |
 | C. Data & Application | 3 | 0 | 0 | 3 |
-| **Total** | **10** | **0** | **0** | **10** |
+| **Total** | **10** | **0** | **3** | **7** |
 
-_Prasyarat terpenuhi: VM target **Ubuntu Server 26.04.1 LTS**, IP statis `192.168.4.5/24` sudah
-aktif, `sshd` berjalan, dan `iotadmin` punya sudo NOPASSWD (kemudahan lab — lihat
-`docs/design/vm_config.md`). Yang belum: stack replika (nginx/DVWA/MariaDB/Mosquitto)._
+### Status eksekusi Fase 1 (21 Oktober 2026)
+
+| Kontrol | Status | Bukti |
+|---|---|---|
+| B-2 firewall `ufw` | **Sebagian** — ufw aktif: default deny incoming, allow 22, 80, 1883 dari `192.168.4.0/24`; bukti `nmap` before/after belum diambil | `docs/blueteam/evidence/hardening-fase1/{before,after}.txt` |
+| B-3 patch OS | **Sebagian** — `apt update/upgrade/full-upgrade` dijalankan; 15 paket tertahan *phased update*; kredensial default **sengaja belum** dihapus (sasaran RT-02) | idem |
+| B-1 minimalisasi service | **Sebagian** — `ModemManager` dinonaktifkan; service lain tidak terpasang; pemindaian port before/after menyusul | idem |
+| A-1…A-4, C-1…C-3 | Belum — ditunda ke Fase 2 agar sasaran RT-02/RT-03 tetap ada | `attack_plan.md` |
+
+_Prasyarat terpenuhi: VM target **Ubuntu Server 26.04.1 LTS**, IP `192.168.4.5/24` aktif, `sshd`
+berjalan, sudo NOPASSWD untuk otomasi, stack replika terpasang (nginx/PHP-FPM/MariaDB/Mosquitto),
+dan baseline traffic sudah direkam — lihat `docs/reports/fase1/laporan-fase1.md`._
 
 ---
 

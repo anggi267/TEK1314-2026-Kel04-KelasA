@@ -1,0 +1,71 @@
+### ports
+tcp   LISTEN 0      80            127.0.0.1:3306      0.0.0.0:*          
+tcp   LISTEN 0      100             0.0.0.0:1883      0.0.0.0:*          
+tcp   LISTEN 0      4096      127.0.0.53%lo:53        0.0.0.0:*          
+tcp   LISTEN 0      4096         127.0.0.54:53        0.0.0.0:*          
+tcp   LISTEN 0      4096            0.0.0.0:22        0.0.0.0:*          
+tcp   LISTEN 0      511             0.0.0.0:80        0.0.0.0:*          
+tcp   LISTEN 0      4096               [::]:22           [::]:*          
+tcp   LISTEN 0      511                [::]:80           [::]:*
+
+### services
+chrony.service
+cron.service
+dbus.service
+fail2ban.service
+fwupd.service
+getty@tty1.service
+mariadb.service
+mosquitto.service
+multipathd.service
+networkd-dispatcher.service
+nginx.service
+php8.5-fpm.service
+polkit.service
+rsyslog.service
+snapd.service
+ssh.service
+systemd-journald.service
+systemd-logind.service
+systemd-networkd.service
+systemd-resolved.service
+systemd-udevd.service
+udisks2.service
+unattended-upgrades.service
+upower.service
+user@1000.service
+
+### ufw
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere                  
+80/tcp                     ALLOW IN    Anywhere                  
+1883/tcp                   ALLOW IN    192.168.4.0/24            
+22/tcp (v6)                ALLOW IN    Anywhere (v6)             
+80/tcp (v6)                ALLOW IN    Anywhere (v6)
+
+### fail2ban
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed:	0
+|  |- Total failed:	0
+|  `- Journal matches:	_SYSTEMD_UNIT=ssh.service + _COMM=sshd
+`- Actions
+   |- Currently banned:	0
+   |- Total banned:	0
+
+### upgradable
+15
+
+### web_local
+200
+[{"id":2,"moisture":38,"ts":"2026-10-21 16:55:30"}]
+
+### os
+Ubuntu 26.04.1 LTS
+7.0.0-38-generic

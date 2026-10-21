@@ -20,8 +20,11 @@ bukti apa yang ada, dan apa yang tersisa. Rincian teknis per topik ada di dokume
 | Instalasi OS target | ✅ Ubuntu Server 26.04.1 LTS (autoinstall) | `vm_config.md` §2.1 |
 | IP lab + ping 3 node | ✅ Semua arah 0% loss, sensor merekam trafik | §3 |
 | Akses sudo untuk otomasi | ✅ `iotadmin` NOPASSWD | §4.1 |
-| Stack replika IoT (nginx, DVWA, MariaDB, Mosquitto) | ❌ Belum | rencana: `docs/design/replica_setup.md` |
-| Hardening 10 kontrol (bagian VIII) | ❌ Belum dieksekusi (baru rencana + skema bukti) | `docs/blueteam/hardening_checklist.md` |
+| Stack replika IoT (nginx, dashboard, API, MariaDB, Mosquitto) | ✅ Terpasang & teruji (HTTP 200, API JSON) | `docs/reports/fase1/laporan-fase1.md` §4 |
+| Baseline traffic normal | ✅ 440 paket / 41,3 s + pcap | `docs/blueteam/evidence/baseline/` |
+| Hardening awal Fase 1 (patch, ufw, fail2ban, minimalisasi service) | ✅ 3 kontrol "Sebagian" terdokumentasi | `docs/blueteam/evidence/hardening-fase1/` |
+| Hardening 10 kontrol penuh (bagian VIII) | ❌ 7 kontrol belum (sengaja, sasaran Fase 2) | `docs/blueteam/hardening_checklist.md` |
+| Laporan Fase 1 (.docx + PDF) | ✅ 7 halaman | `docs/reports/fase1/` |
 | Eksekusi 5 skenario serangan + Purple Loop | ❌ Belum (Fase 2, Minggu 10–11) | `docs/redteam/attack_plan.md` |
 | Push ke GitHub | ⚠️ Belum — kredensial git tidak tersimpan di mesin ini | 8 commit lokal |
 | Detail produk IoT asli | ⚠️ Masih placeholder `[[ISI]]` | `tech_stack_declaration.md` |
