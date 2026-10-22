@@ -11,7 +11,7 @@ memegang sesi tersebut sebelum commit final.
 | Minggu | Fokus | Aktivitas | Bukti / artefak | Status |
 |---|---|---|---|---|
 | 1 | Pengantar keamanan siber & pembentukan tim | Kesepakatan peran (Lead/Red/Blue), pembuatan repo GitHub, aturan kerja kelompok | Repo `TEK1314-2026-Kel04-KelasA` (commit `c53492d`) | Selesai |
-| 2 | Instalasi tools | Instalasi CyberOps Workstation VM dan Security Onion (OVA/ISO 3.2.0); verifikasi VM boot & antarmuka. **Catatan: CyberOps Workstation = alat praktikum, tidak dipakai di topologi PBL** | `docs/Pertemuan 2/Laptop Utama/Cybersecurity_labVM.png`, `Security_Onion.png`; commit `80c1fcb` "instalasi VM" | Selesai |
+| 2 | Instalasi tools | Instalasi CyberOps Workstation VM dan Security Onion (OVA/ISO 3.2.0); verifikasi VM boot & antarmuka. **Catatan: CyberOps Workstation = alat praktikum, tidak dipakai di topologi PBL** | `docs/evidence/instalasi-minggu2/Laptop Utama/Cybersecurity_labVM.png`, `Security_Onion.png`; commit `80c1fcb` "instalasi VM" | Selesai |
 | 3 | Hardening & audit dasar Linux | Praktikum dasar Linux: manajemen user, permission, service, audit awal | Materi `Pertemuan 3/Hardening & Audit Dasar Sistem Linux.pdf`; catatan praktikum `[[cek]]` | Selesai |
 | 4 | Perancangan arsitektur & skema IP | Topologi Attacker–Target–Monitoring, penetapan `192.168.4.0/24`, pemilihan Metasploitable2 sebagai target, riset port berpotensi dieksploitasi | `docs/design/topology.png`, `docs/design/ip_plan.md` (commit `41238c3`, `02c6401`) | Selesai |
 | 5 | Integritas transfer data & analisis jaringan | Tugas kelas integritas data, praktikum Packet Tracer + Wireshark (routing, TCP/IP, enkripsi) | `Pertemuan 5/*` (laporan, diagram TTL, alur data) | Selesai |

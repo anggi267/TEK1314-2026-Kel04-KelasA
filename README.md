@@ -70,6 +70,25 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
   dijalankan dan di-screenshot. Status `Selesai` pada checklist hanya boleh diisi bila file
   bukti sudah ada di `docs/blueteam/evidence/`.
 
+## Kesesuaian dengan struktur wajib (Panduan Minggu 9, Bagian XI)
+
+| Wajib menurut panduan | Path di repo ini | Status |
+|---|---|---|
+| `docs/design/topology.png`, `ip_plan.md` (Minggu 4, dipertahankan) | sama | ✅ ada, tidak dihapus/ditimpa |
+| `docs/presentation-minggu9/slides.pdf` | sama | ✅ PDF 8 halaman |
+| `docs/presentation-minggu9/tech_stack_declaration.md` | sama | ✅ tabel pemetaan + kelemahan sengaja |
+| `docs/blueteam/hardening_checklist.md` | sama | ✅ 10 kontrol (A/B/C) + status & skema bukti |
+| `docs/blueteam/evidence/` | `baseline/`, `hardening-fase1/` | ✅ pcap + metrik + before/after |
+| `docs/redteam/attack_plan.md` | sama | ✅ 5 skenario, 4 kategori, tools eksplisit |
+| `docs/redteam/evidence/` | README + subfolder per skenario | ⏳ diisi Minggu 10–11 |
+| `docs/purple-team-log.md` | sama | ✅ 5 tahap × 5 skenario (status RENCANA) |
+| Logbook Minggu 1–9 | `docs/logbook.md` | ✅ termutakhirkan |
+
+**Dokumen pendukung (di luar struktur wajib, tidak menggantikan yang di atas):**
+`docs/design/replica_setup.md`, `docs/design/vm_config.md`, `docs/design/topology-v2.png`,
+`docs/lab-status.md`, `docs/reports/fase1/`, `docs/roles/`, `docs/evidence/instalasi-minggu2/`,
+`scripts/`.
+
 ## Runbook pengerjaan per role
 
 Urutan kerja operasional dari Fase 1 sampai Fase 3 (siapa mengerjakan apa, dalam urutan apa,
@@ -94,17 +113,20 @@ dengan bukti apa):
 
 ```
 docs/
-  design/                  topology.png, ip_plan.md          (Minggu 4)
-  Pertemuan 2/             bukti instalasi VM                 (Minggu 2)
+  design/                  topology.png (Minggu 4), topology-v2.png, ip_plan.md,
+                           replica_setup.md, vm_config.md
   presentation-minggu9/    slides.pdf, slides.html, tech_stack_declaration.md
-  blueteam/                hardening_checklist.md, evidence/
+  blueteam/                hardening_checklist.md, evidence/{baseline,hardening-fase1}/
   redteam/                 attack_plan.md, evidence/
-  purple-team-log.md
-  logbook.md
-  roles/                   runbook.md + Runbook ... Fase1-3.docx/.pdf
+  purple-team-log.md       log 5 tahap Purple Team Loop
+  logbook.md               logbook Minggu 1-10
+  lab-status.md            ringkasan status lab & konfigurasi VM
+  reports/fase1/           laporan Fase 1 (.md/.docx/.pdf)
+  roles/                   runbook per role + Runbook Fase1-3 (.docx/.pdf)
+  evidence/instalasi-minggu2/  screenshot instalasi VM (Minggu 2)
 scripts/
   blueteam/                perekam bukti before/after hardening
-  docs/                    build_runbook.py (pembangun ulang .docx)
+  docs/                    pembangun dokumen (runbook, laporan, seed ISO, topologi, vm_keys)
 ```
 
 ## Aturan kerja

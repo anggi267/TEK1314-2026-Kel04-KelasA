@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# artefak sementara lab (jangan di-commit)
+docs/**/evidence/**/*.tmp
+*.pcap.tmp

@@ -3,6 +3,18 @@
 Folder ini menampung bukti **before** dan **after** untuk setiap kontrol pada
 `docs/blueteam/hardening_checklist.md`.
 
+## Isi folder saat ini (21 Oktober 2026)
+
+| Path | Isi | Status |
+|---|---|---|
+| `hardening-fase1/before.txt` | potret kondisi sebelum hardening (port, service, ufw, jumlah paket upgradable) | ✅ |
+| `hardening-fase1/after.txt` | potret setelah hardening (port, service, `ufw status verbose`, `fail2ban-client status sshd`, uji web 200) | ✅ |
+| `baseline/baseline_minggu9.pcap` | capture traffic normal 440 paket / 41,3 detik | ✅ |
+| `baseline/baseline_metrics.txt` | ringkasan metrik baseline | ✅ |
+
+Bukti ini mendukung laporan Fase 1 (`docs/reports/fase1/`). Bukti per-kontrol dengan pola
+`<ID>_<before|after>_<topik>` menyusul pada saat kontrol tersebut dieksekusi di Fase 2.
+
 ## Aturan penamaan
 
 ```
@@ -37,5 +49,6 @@ Jalankan dari VM target: `sudo bash 01_rekam_baseline.sh` lalu bandingkan antar 
 
 - [ ] Setiap kontrol `Selesai` punya file `_before_` dan `_after_`
 - [ ] Nama file sesuai ID kontrol (A1–A4, B1–B3, C1–C3)
-- [ ] `baseline_minggu9.pcap` + `baseline_summary.md` tersedia
+- [x] `baseline_minggu9.pcap` + `baseline_metrics.txt` tersedia
+- [ ] Setiap kontrol yang diklaim `Selesai` punya link bukti di hardening_checklist
 - [ ] Tidak ada kredensial asli yang ikut ter-commit
