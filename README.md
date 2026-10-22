@@ -45,7 +45,12 @@ docs/
     evidence/                       diisi Minggu 10-11
   purple-team-log.md                log 5 tahap per skenario
   logbook.md                        progres Minggu 1-9
+  evidence/instalasi-minggu2/       screenshot instalasi VM (bukti Minggu 2)
 ```
+
+Selain sembilan berkas wajib di atas, ada satu folder bukti tambahan
+(`docs/evidence/instalasi-minggu2/`) berisi tangkapan layar instalasi VirtualBox dan
+Security Onion pada Minggu 2.
 
 ## Status (22 Oktober 2026)
 

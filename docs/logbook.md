@@ -3,7 +3,7 @@
 | Minggu | Agenda | Hasil | Bukti |
 |---|---|---|---|
 | 1 | Kontrak PBL, pembagian peran | Olan (Lead), Anggi (Blue), Raka & Zidan (Red) | `README.md` |
-| 2 | Instalasi tools | VirtualBox + VM dasar; Security Onion OVA | `PBL-pendukung/docs/evidence/instalasi-minggu2/Laptop Utama/` (2 screenshot) |
+| 2 | Instalasi tools | VirtualBox + VM dasar; Security Onion OVA | `docs/evidence/instalasi-minggu2/Laptop Utama/` (2 screenshot) |
 | 3 | Praktikum jaringan & recon | nmap, tcpdump, Wireshark dasar | — |
 | 4 | Desain topologi & skema IP | 3 node, subnet `192.168.4.0/24`, IP tetap | `docs/design/topology.png`, `ip_plan.md` |
 | 5 | Rencana Blue Team | 10 kontrol (A/B/C) + skema bukti | `docs/blueteam/hardening_checklist.md` |
