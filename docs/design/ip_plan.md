@@ -1,62 +1,53 @@
-# IP Plan - Kelompok 4
+# Skema IP & Penamaan VM
 
-**Subnet Jaringan:** `192.168.4.0/24`
-**Skenario:** Multi-service exploitation (Web & Database) menggunakan Metasploitable2
+Subnet lab: **192.168.4.0/24** (Internal Network `pbl-kel4`, tanpa DHCP).
 
-## Tabel Alokasi IP
+| Node | Nama VM | IP lab | Gateway | Adapter 2 |
+|---|---|---|---|---|
+| Attacker | `PBL-K4-02-Attacker-Kali` | 192.168.4.100/24 | — | NAT (dhcp) |
+| Target | `PBL-K4-01-Target-Ubuntu` | 192.168.4.5/24 | — | NAT 10.0.3.15 + forward 2222→22 |
+| Monitoring | `PBL-K4-03-Monitoring-Onion` | 192.168.4.200/24 | — | Host-only 192.168.56.1 |
 
-| Hostname                | IP Address       | OS Direncanakan         | Peran         |
-|--------------------------|------------------|--------------------------|---------------|
-| Target Server (Korban)   | 192.168.4.5      | Metasploitable2          | Blue Team (setup) |
-| Attacker Node             | 192.168.4.100    | Kali Linux               | Red Team      |
-| Monitoring Node           | 192.168.4.200    | Security Onion           | Blue Team     |
+## Port yang dipakai Target Node
 
-## Catatan Tambahan
+| Port | Layanan | Akses |
+|---|---|---|
+| 22/tcp | SSH (admin) | semua (lab + NAT) |
+| 80/tcp | dashboard & API KABITA (Nuxt/Nitro) | 192.168.4.0/24 |
+| 5432/tcp | PostgreSQL | hanya `127.0.0.1` |
 
-- Subnet `192.168.4.0/24` dipilih agar unik dan tidak bentrok dengan kelompok lain, sesuai Kontrak Kuliah Poin 3a.
-- Monitoring Node (Security Onion) ditempatkan pada segmen yang sama agar dapat memantau seluruh trafik antara Attacker Node dan Target Node.
-- Metasploitable2 dipilih sebagai Target Server karena menyediakan banyak service dengan celah keamanan default sekaligus dalam satu VM, antara lain:
-  - **Web** - port 80 (DVWA bawaan, phpMyAdmin, Mutillidae)
-  - **Database** - port 3306 (MySQL), 5432 (PostgreSQL)
-  - **Service lain** - port 21 (FTP/vsftpd versi vulnerable), 23 (Telnet), 445 (Samba)
-- Fokus service mana yang akan dieksploitasi (Web/DB/lainnya) akan ditentukan lebih lanjut oleh Red Team berdasarkan riset celah keamanan pada pertemuan ini.
+## Konfigurasi per node
 
----
+**Kali** — IP lab ditambahkan lewat NetworkManager, bukan `ip addr add` (kalau lewat `ip addr`,
+ARP tidak dijawab dan host lain gagal ping):
 
-## Revisi Minggu 9 — Target Node menjadi Ubuntu Server
+```bash
+sudo nmcli con add type ethernet ifname eth0 con-name pbl-lab ip4 192.168.4.100/24
+sudo nmcli con up pbl-lab
+```
 
-Keputusan awal (di atas) memakai Metasploitable2. Setelah instalasi berjalan, kelompok
-memutuskan **mengganti Target Node ke Ubuntu Server** agar replika benar-benar menyerupai
-*backend* sistem IoT (dashboard, API, database, broker MQTT) dan agar tetap bisa menjalankan
-`apt`/`ufw`/`fail2ban` untuk keperluan hardening.
+**Target** — netplan statis, permanen:
 
-Tabel di atas dipertahankan sebagai riwayat keputusan Minggu 4. Alokasi IP **tidak berubah**.
+```yaml
+# /etc/netplan/60-pbl-lab.yaml
+network:
+  version: 2
+  ethernets:
+    enp0s3:
+      dhcp4: false
+      addresses: [192.168.4.5/24]
+      optional: true
+```
 
-| Hostname | IP Address | OS (revisi) | Peran |
-|---|---|---|---|
-| Target Server (Korban) | 192.168.4.5 | Ubuntu Server LTS 26.04 | Blue Team (setup) |
-| Attacker Node | 192.168.4.100 | Kali Linux 2026.2 | Red Team |
-| Monitoring Node | 192.168.4.200 | Security Onion 3.2 | Blue Team |
+**Onion** — sensor pasif (`promisc on arp off`); agar bisa di-ping, ARP diaktifkan:
 
-### Konfigurasi jaringan (sisi VirtualBox, sudah diterapkan)
+```bash
+sudo ip link set eth0 promisc on arp on
+sudo ip addr add 192.168.4.200/24 dev eth0
+```
 
-| Node | Nama VM (VirtualBox) | NIC 1 (segmen lab) | NIC 2 (luar segmen) |
-|---|---|---|---|
-| Target Node | `PBL-K4-01-Target-Ubuntu` | Internal Network `pbl-kel4` | NAT |
-| Attacker Node | `PBL-K4-02-Attacker-Kali` | Internal Network `pbl-kel4` | NAT |
-| Monitoring Node | `PBL-K4-03-Monitoring-Onion` | Internal Network `pbl-kel4`, **promiscuous `allow-all`** | Host-only `192.168.56.1` |
+## Catatan revisi Minggu 9
 
-Rincian lengkap (RAM/vCPU/snapshot/rollback, termasuk isu versi Security Onion 2.x):
-`docs/design/vm_config.md`.
-
-Catatan penting:
-
-1. Di VirtualBox, trafik unicast antar-VM pada Internal Network hanya terlihat sensor bila
-   adapter monitoring di-set promiscuous `allow-all`. Ini sudah diverifikasi lewat
-   `VBoxManage showvminfo` dan harus diuji ulang di dalam guest dengan `tcpdump`.
-2. **Ubuntu 25.04 (isi VM saat ini) sudah EOL** — harus diganti dengan 26.04 LTS sebelum
-   kontrol B-3 (patch OS) dapat dibuktikan. Detail instalasi: `docs/design/replica_setup.md`.
-3. Kelemahan replika dipasang **sengaja** dan didaftar di `replica_setup.md` Bagian 3.
-4. Diagram terbaru: `docs/design/topology-v2.png` (diagram Minggu 4 tetap disimpan sebagai
-   `topology.png`).
-
+Target Node semula direncanakan Metasploitable2, diganti **Ubuntu Server 26.04.1 LTS** agar
+replika menyerupai backend IoT nyata (Nuxt + PostgreSQL) dan kontrol hardening bisa dibuktikan.
+Subnet dan IP **tidak berubah** dari Minggu 4.

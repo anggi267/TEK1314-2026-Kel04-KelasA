@@ -1,0 +1,72 @@
+Kondisi Target Node SETELAH hardening + migrasi stack KABITA (Nuxt + PostgreSQL)
+Diambil: 2026-10-20, host target-iot
+
+### Sistem
+Ubuntu 26.04.1 LTS
+7.0.0-38-generic
+up 56 minutes
+
+### Port mendengarkan
+tcp   LISTEN 0      4096            0.0.0.0:22        0.0.0.0:*          
+tcp   LISTEN 0      4096      127.0.0.53%lo:53        0.0.0.0:*          
+tcp   LISTEN 0      511             0.0.0.0:80        0.0.0.0:*          
+tcp   LISTEN 0      4096         127.0.0.54:53        0.0.0.0:*          
+tcp   LISTEN 0      200           127.0.0.1:5432      0.0.0.0:*          
+tcp   LISTEN 0      4096               [::]:22           [::]:*
+
+### Service aktif
+chrony.service
+cron.service
+dbus.service
+fail2ban.service
+getty@tty1.service
+kabita.service
+networkd-dispatcher.service
+packagekit.service
+polkit.service
+postgresql@18-main.service
+rsyslog.service
+snapd.service
+ssh.service
+systemd-journald.service
+systemd-logind.service
+systemd-networkd.service
+systemd-resolved.service
+systemd-udevd.service
+unattended-upgrades.service
+user@1000.service
+
+### Firewall ufw
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere                   # admin ssh (lab+nat)
+80/tcp                     ALLOW IN    192.168.4.0/24             # dashboard KABITA
+22/tcp (v6)                ALLOW IN    Anywhere (v6)              # admin ssh (lab+nat)
+
+### fail2ban
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed:	0
+|  |- Total failed:	0
+|  `- Journal matches:	_SYSTEMD_UNIT=ssh.service + _COMM=sshd
+`- Actions
+   |- Currently banned:	0
+   |- Total banned:	0
+   `- Banned IP list:
+
+### Aplikasi KABITA
+active
+GET / -> 200
+{"jumlah_kambing":"6","rata_berat":"31.3","pakan_hari_ini":"8.78","catatan_hari_ini":"6"}
+
+### PostgreSQL
+psql (PostgreSQL) 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
+60 baris telemetri
+
+### Paket upgradable
+10

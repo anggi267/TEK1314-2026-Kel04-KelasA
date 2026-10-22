@@ -1,6 +1,13 @@
 __pycache__/
 *.pyc
 
+# artefak build aplikasi Nuxt KABITA
+app/kabita/node_modules/
+app/kabita/.nuxt/
+app/kabita/.output/
+app/kabita/.data/
+app/kabita/package-lock.json
+
 # artefak sementara lab (jangan di-commit)
 docs/**/evidence/**/*.tmp
 *.pcap.tmp

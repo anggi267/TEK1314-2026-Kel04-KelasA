@@ -1,446 +1,260 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<title>Checkpoint Minggu 9 — Kelompok 4</title>
+<meta charset="utf-8" />
+<title>KABITA — PBL TEK1314 Kelompok 4</title>
 <style>
-  @page { size: 1280px 720px; margin: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: #070A0E; }
-  body {
-    font-family: "Segoe UI", Inter, system-ui, sans-serif;
-    color: #E6EDF3; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  :root{
+    --bg:#0A0E11; --panel:#10161B; --ink:#E9F1F5; --muted:#8A9AA6;
+    --line:#1E2A32; --mint:#5EE6A8; --amber:#F2B871; --blue:#7FB6E8; --pad:78px;
   }
-  .slide {
-    width: 1280px; height: 720px; position: relative; overflow: hidden;
-    padding: 46px 56px 54px; background:
-      radial-gradient(1100px 520px at 88% -12%, rgba(0,229,160,.13), transparent 62%),
-      radial-gradient(900px 520px at -6% 108%, rgba(106,169,255,.12), transparent 60%),
-      #0A0E13;
-    page-break-after: always; break-after: page;
-  }
-  .slide:last-child { page-break-after: auto; }
-  .kicker {
-    font-size: 12.5px; letter-spacing: .22em; text-transform: uppercase;
-    color: #00E5A0; font-weight: 700; margin-bottom: 10px;
-  }
-  h1 { font-size: 46px; line-height: 1.08; letter-spacing: -.02em; font-weight: 800; }
-  h2 { font-size: 30px; line-height: 1.15; letter-spacing: -.015em; font-weight: 750; margin-bottom: 4px; }
-  .sub { color: #8B98A5; font-size: 15px; margin-top: 8px; }
-  .rule { height: 3px; width: 54px; background: #00E5A0; border-radius: 2px; margin: 16px 0 22px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .card {
-    background: rgba(18,24,33,.86); border: 1px solid #1E2836; border-radius: 14px;
-    padding: 16px 18px;
-  }
-  .card h3 { font-size: 15px; color: #E6EDF3; margin-bottom: 8px; letter-spacing: .01em; }
-  .card p, .card li { font-size: 13px; line-height: 1.5; color: #A9B6C3; }
-  .card ul { padding-left: 16px; }
-  .card li { margin-bottom: 4px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12.2px; }
-  th {
-    text-align: left; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
-    color: #7F8C9B; font-weight: 700; padding: 7px 9px; border-bottom: 1px solid #243040;
-  }
-  td { padding: 7px 9px; border-bottom: 1px solid #151D28; color: #C6D2DE; vertical-align: top; line-height: 1.35; }
-  tr:last-child td { border-bottom: none; }
-  td strong { color: #E6EDF3; font-weight: 650; }
-  code, .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.6px; color: #7FE9C4; }
-  .chip {
-    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px;
-    font-weight: 700; letter-spacing: .04em; border: 1px solid #2A3746; color: #93A1AF;
-  }
-  .chip.red { color: #FF8FA3; border-color: rgba(255,92,122,.45); background: rgba(255,92,122,.1); }
-  .chip.blue { color: #8DC0FF; border-color: rgba(106,169,255,.45); background: rgba(106,169,255,.1); }
-  .chip.grn { color: #6DF3C1; border-color: rgba(0,229,160,.45); background: rgba(0,229,160,.1); }
-  .foot {
-    position: absolute; bottom: 18px; left: 56px; right: 56px;
-    display: flex; justify-content: space-between; font-size: 10.5px;
-    color: #5D6B7A; letter-spacing: .1em; text-transform: uppercase;
-  }
-  .num { color: #00E5A0; font-weight: 700; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:#05080A;}
+  body{font-family:"Segoe UI","Segoe UI Variable",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased;}
+  .slide{position:relative; width:1280px; height:720px; background:var(--bg); padding:var(--pad);
+    display:flex; flex-direction:column; overflow:hidden; page-break-after:always; break-after:page;}
+  .slide:last-child{page-break-after:auto;}
+  .kicker{font:600 13px/1 "Consolas",monospace; letter-spacing:.22em; text-transform:uppercase; color:var(--mint);}
+  h2{font-size:40px; line-height:1.1; letter-spacing:-.015em; font-weight:620;}
+  .lede{font-size:19px; line-height:1.55; color:var(--muted); max-width:58ch;}
+  .foot{position:absolute; left:var(--pad); right:var(--pad); bottom:34px; display:flex;
+    justify-content:space-between; align-items:baseline; font:500 11.5px/1 "Consolas",monospace;
+    letter-spacing:.08em; color:#4E606D; border-top:1px solid var(--line); padding-top:12px;}
+  .rule{height:1px; background:var(--line); border:0;}
+  .head{display:flex; flex-direction:column; gap:14px; margin-bottom:30px;}
+
+  /* cover */
+  .cover{justify-content:space-between;}
+  .mark{display:flex; align-items:center; gap:16px;}
+  .mark .dot{width:12px; height:12px; border-radius:50%; background:var(--mint); box-shadow:0 0 20px rgba(94,230,168,.7);}
+  .mark .word{font-size:86px; font-weight:680; letter-spacing:-.035em;}
+  .cover .tagline{font-size:27px; line-height:1.28; font-weight:400; max-width:26ch;}
+  .cover .meta{display:flex; gap:48px; font-size:13px; color:var(--muted);}
+  .cover .meta b{display:block; color:var(--ink); font-weight:600; font-size:15px; margin-top:5px; line-height:1.5;}
+
+  /* facts */
+  .facts{display:flex; flex-direction:column;}
+  .fact{display:grid; grid-template-columns:140px 1fr; gap:24px; align-items:baseline;
+    padding:17px 0; border-bottom:1px solid var(--line);}
+  .fact:first-child{border-top:1px solid var(--line);}
+  .fact .n{font-size:34px; font-weight:600; color:var(--mint); letter-spacing:-.02em;}
+  .fact .n small{font-size:13px; color:var(--muted); font-weight:400; letter-spacing:0;}
+  .fact p{font-size:16.5px; line-height:1.45; color:#C9D6DE;}
+  .fact p b{color:var(--ink); font-weight:600;}
+
+  /* rows */
+  .rows{display:flex; flex-direction:column;}
+  .row{display:grid; grid-template-columns:165px 1fr auto; gap:20px; align-items:center;
+    padding:15px 0; border-bottom:1px solid var(--line);}
+  .row:first-child{border-top:1px solid var(--line);}
+  .row .lbl{font:600 11.5px/1 "Consolas",monospace; letter-spacing:.1em; color:var(--muted); text-transform:uppercase;}
+  .row .val{font-size:18px; font-weight:500;}
+  .row .val span{color:var(--muted); font-weight:400; font-size:14.5px;}
+  .row .tag{font:600 11.5px/1 "Consolas",monospace; color:var(--mint); background:rgba(94,230,168,.1);
+    border:1px solid rgba(94,230,168,.25); padding:6px 10px; border-radius:5px;}
+
+  /* weaknesses */
+  .wk{width:100%; border-collapse:collapse;}
+  .wk th{font:600 11px/1.4 "Consolas",monospace; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); text-align:left; padding:0 0 10px; border-bottom:1px solid var(--line);}
+  .wk td{padding:11px 0; border-bottom:1px solid #162026; font-size:15.5px; vertical-align:top;}
+  .wk td:first-child{width:26px; color:var(--amber); font:600 14px/1 "Consolas",monospace;}
+  .wk td.by{color:var(--mint); font:600 12.5px/1.3 "Consolas",monospace; white-space:nowrap;}
+  .mono{font-family:Consolas,monospace; color:#C9D6DE;}
+
+  /* status */
+  .status{display:flex; gap:14px; flex-wrap:wrap;}
+  .pill{display:flex; flex-direction:column; gap:6px; padding:15px 19px; border:1px solid var(--line);
+    border-radius:8px; min-width:200px; background:var(--panel);}
+  .pill .k{font:600 10.5px/1 "Consolas",monospace; letter-spacing:.12em; color:var(--muted);}
+  .pill .v{font-size:16.5px; font-weight:600;}
+  .pill.ok{border-color:rgba(94,230,168,.4);} .pill.ok .v{color:var(--mint);}
+  .pill.part{border-color:rgba(242,184,113,.35);} .pill.part .v{color:var(--amber);}
+  .big{display:flex; align-items:flex-end; gap:26px;}
+  .big .num{font-size:104px; line-height:.86; font-weight:680; letter-spacing:-.04em;}
+  .big .cap{font-size:14.5px; color:var(--muted); line-height:1.5; padding-bottom:8px; max-width:30ch;}
+
+  /* scenarios */
+  .sc{display:flex; flex-direction:column;}
+  .sc .item{display:grid; grid-template-columns:74px 180px 1fr; gap:18px; align-items:baseline;
+    padding:12px 0; border-bottom:1px solid var(--line);}
+  .sc .item:first-child{border-top:1px solid var(--line);}
+  .sc .id{font:600 14.5px/1 "Consolas",monospace; color:var(--blue);}
+  .sc .nm{font-size:15.5px; font-weight:600;}
+  .sc .ds{font-size:14px; color:var(--muted); line-height:1.4;}
+  .loop{display:flex; align-items:center; gap:11px; font:600 11.5px/1 "Consolas",monospace;
+    letter-spacing:.1em; color:var(--muted); text-transform:uppercase; margin-top:24px;}
+  .loop i{width:20px; height:1px; background:#2A3A45; display:block;}
+  .loop b{color:var(--mint); font-weight:600;}
+
+  /* topology */
+  .topo{width:100%; height:100%; object-fit:contain; border:1px solid var(--line); border-radius:10px;}
+  .legend{display:flex; flex-direction:column; gap:13px;}
+  .legend div{display:grid; grid-template-columns:12px 1fr; gap:12px; align-items:baseline;
+    font-size:14.5px; color:#C2D0D8;}
+  .legend i{width:10px; height:10px; border-radius:2px; display:block;}
+  .legend small{color:var(--muted); display:block; font-size:12.5px; margin-top:3px;}
+
+  @page{size:1280px 720px; margin:0;}
+  @media print{ html,body{background:#0A0E11;} }
 </style>
 </head>
 <body>
 
-<section class="slide">
-  <div class="kicker">TEK1314 Keamanan Siber · Kelas A · Kelompok 4</div>
-  <h1>Simulated SOC Engagement<br>Mengamankan Backend Sistem IoT</h1>
-  <div class="rule" style="width:96px"></div>
-  <p class="sub" style="font-size:17px;max-width:840px">
-    Checkpoint Fase 1 → Fase 2 · Presentasi progres Minggu ke-9
-  </p>
-
-  <div class="grid3" style="margin-top:34px">
-    <div class="card">
-      <h3>Lead</h3>
-      <p>Olan</p>
-      <p class="mono" style="color:#6E7C8B">koordinasi &amp; waktu</p>
-    </div>
-    <div class="card">
-      <h3>Blue Team <span class="chip blue">Defender</span></h3>
-      <p>Anggi Permana Putra<br><span class="mono" style="color:#6E7C8B">J0404241154</span></p>
-    </div>
-    <div class="card">
-      <h3>Red Team <span class="chip red">Attacker</span></h3>
-      <p>Raka Syauqi Ferdian<br><span class="mono" style="color:#6E7C8B">J0404241112</span></p>
-      <p>Zidan</p>
-    </div>
+<section class="slide cover">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div class="mark"><span class="dot"></span><span class="word">KABITA</span></div>
+    <div class="kicker" style="text-align:right; line-height:1.9;">PBL TEK1314 · Kelas A<br>Pertemuan 9 · 2026</div>
   </div>
-
-  <div class="card" style="margin-top:22px;border-color:rgba(0,229,160,.35)">
-    <p style="color:#C6D2DE">
-      <strong style="color:#00E5A0">Apa yang dinilai hari ini:</strong>
-      kejelasan <em>rencana</em> — pemetaan tech stack, arsitektur lab, kesiapan hardening
-      (10 kontrol, 3 kategori), dan keragaman attack plan Fase 2 — bukan eksekusi penuh.
-    </p>
+  <div style="display:flex; flex-direction:column; gap:24px;">
+    <p class="tagline">Mengamankan backend pencatatan<br>berat badan &amp; pakan kambing.</p>
+    <hr class="rule" style="max-width:500px;">
+    <p class="lede" style="max-width:62ch;">Lab tertutup tiga node: satu replika backend IoT yang sengaja
+      dibuat rentan, satu penyerang, satu sensor — lalu satu siklus tertutup sampai celahnya benar-benar tertutup.</p>
   </div>
-
-  <div class="foot"><span>Checkpoint Minggu 9 · 20 Oktober 2026</span><span class="num">01 / 08</span></div>
+  <div class="meta">
+    <div>Lead<b>Olan Elrai R. Sibagariang<br>J0404241158</b></div>
+    <div>Blue Team<b>Anggi Permana Putra<br>J0404241154</b></div>
+    <div>Red Team<b>Raka S. Ferdian · J0404241112<br>Muhammad Zidan · J0404241173</b></div>
+  </div>
+  <div class="foot"><span>github.com/anggi267/TEK1314-2026-Kel04-KelasA</span><span>01 / 08</span></div>
 </section>
 
 <section class="slide">
-  <div class="kicker">01 · Konteks Proyek IoT</div>
-  <h2>Apa yang kami lindungi</h2>
-  <p class="sub">KABITA — pencatatan berat badan &amp; pakan kambing. Yang dijaga: backend-nya, bukan timbangannya.</p>
-
-  <div class="grid2" style="margin-top:18px">
-    <div class="card">
-      <h3>Produk IoT: KABITA</h3>
-      <ul>
-        <li>Timbangan badan &amp; pakan kambing (load cell, RFID ear tag)</li>
-        <li><strong>Backend:</strong> Ubuntu Server + <strong>ThingsBoard</strong> + PostgreSQL</li>
-        <li>Data operasional: berat (kg) &amp; pakan (kg) per ekor per hari</li>
-      </ul>
-      <p style="margin-top:8px;color:#7F8C9B;font-size:11.5px">
-        Detail pemetaan: tech_stack_declaration.md
-      </p>
-    </div>
-    <div class="card">
-      <h3>Aset yang dijaga SOC</h3>
-      <table>
-        <tr><td><strong>Kerahasiaan</strong></td><td>data sensor &amp; akun operator</td></tr>
-        <tr><td><strong>Integritas</strong></td><td>berat &amp; pakan tidak dapat dipalsukan</td></tr>
-        <tr><td><strong>Ketersediaan</strong></td><td>dashboard &amp; API tetap melayani</td></tr>
-      </table>
-    </div>
+  <div class="head">
+    <span class="kicker">Yang kami amankan</span>
+    <h2>Peternakan mencatat angka.<br>Kalau angkanya dipalsukan, keputusan ikut salah.</h2>
   </div>
-
-  <div class="grid3" style="margin-top:16px">
-    <div class="card"><h3 style="color:#FF8FA3">Pencurian data</h3><p>Ambil alih akun ThingsBoard / token device → data peternakan terbaca.</p></div>
-    <div class="card"><h3 style="color:#FFC98D">Pemalsuan telemetri</h3><p>Publish MQTT/REST dengan token curian → berat &amp; pakan palsu.</p></div>
-    <div class="card"><h3 style="color:#8DC0FF">Gangguan layanan</h3><p>SYN flood pada dashboard → operasi lapangan buta.</p></div>
+  <div class="facts">
+    <div class="fact"><div class="n">2<small> kandang</small></div>
+      <p><b>Kandang A pejantan, Kandang B indukan.</b> Setiap kambing punya identitas RFID; pencatatan
+        dilakukan per ekor, bukan per kandang.</p></div>
+    <div class="fact"><div class="n">6<small> kambing</small></div>
+      <p><b>Berat dan pakan dicatat bersamaan.</b> Satu baris telemetri = satu penimbangan plus jumlah
+        pakan yang diberikan hari itu.</p></div>
+    <div class="fact"><div class="n">60<small> catatan</small></div>
+      <p><b>Sepuluh hari riwayat.</b> Cukup untuk membedakan traffic normal dari traffic serangan saat
+        evaluasi deteksi.</p></div>
+    <div class="fact"><div class="n">3<small> node</small></div>
+      <p><b>Penyerang, target, sensor.</b> Semua di satu jaringan internal tanpa akses internet, sehingga
+        hasil uji bisa diulang persis.</p></div>
   </div>
-
-  <div class="foot"><span>Konteks &amp; ruang lingkup</span><span class="num">02 / 08</span></div>
+  <div class="foot"><span>Replika KABITA · data sintetis</span><span>02 / 08</span></div>
 </section>
-<section class="slide">
-  <div class="kicker">02 · Deklarasi Tech Stack &amp; Replikasi</div>
-  <h2>Dari produk IoT asli ke Target Node replika</h2>
-  <p class="sub">Satu VM target (<span class="mono">192.168.4.5</span>) memerankan seluruh backend.</p>
 
-  <table style="margin-top:14px">
-    <tr>
-      <th style="width:23%">Komponen backend</th>
-      <th style="width:31%">Teknologi asli (produk IoT)</th>
-      <th style="width:31%">Replika di Target Node</th>
-      <th style="width:15%">Port</th>
-    </tr>
-    <tr><td><strong>OS server</strong></td><td>Ubuntu Server LTS 26.04</td><td>Ubuntu Server LTS 26.04 (1:1)</td><td class="mono">—</td></tr>
-    <tr><td><strong>Platform IoT</strong></td><td><strong>ThingsBoard CE</strong> (UI + REST)</td><td>ThingsBoard CE · akun default dibiarkan</td><td class="mono">8080</td></tr>
-    <tr><td><strong>API telemetri</strong></td><td>REST <span class="mono">/api/v1/&lt;token&gt;/telemetry</span></td><td>sama · token statis tanpa rotasi</td><td class="mono">8080</td></tr>
-    <tr><td><strong>Database</strong></td><td>PostgreSQL 16</td><td>PostgreSQL 16 · <span class="mono">thingsboard</span></td><td class="mono">5432</td></tr>
-    <tr><td><strong>Protokol perangkat</strong></td><td>MQTT transport ThingsBoard</td><td>sama · tanpa TLS, token = username</td><td class="mono">1883</td></tr>
-    <tr><td><strong>Manajemen jarak jauh</strong></td><td>SSH key-based, non-root</td><td>OpenSSH · password auth aktif · user <span class="mono">iotadmin</span></td><td class="mono">22</td></tr>
+<section class="slide">
+  <div class="head" style="margin-bottom:22px;">
+    <span class="kicker">Topologi</span>
+    <h2>192.168.4.0/24 — tiga node, tanpa jalan keluar.</h2>
+  </div>
+  <div style="display:grid; grid-template-columns:0.8fr 1.2fr; gap:38px; flex:1; align-items:start;">
+    <div class="legend">
+      <div><i style="background:#7FB6E8"></i><span>192.168.4.100 — Kali 2026.2<small>nmap · hydra · sqlmap · hping3</small></span></div>
+      <div><i style="background:#5EE6A8"></i><span>192.168.4.5 — Ubuntu Server 26.04.1<small>KABITA Nuxt 4 di :80 · PostgreSQL 18 di :5432</small></span></div>
+      <div><i style="background:#F2B871"></i><span>192.168.4.200 — Security Onion 2.x<small>sensor pasif, promiscuous</small></span></div>
+      <p class="lede" style="font-size:14.5px; margin-top:6px;">Adapter kedua hanya untuk administrasi:
+        SSH 2222→22 di target, NAT di Kali, host-only di sensor.</p>
+    </div>
+    <img class="topo" src="../design/topology-v2.png" alt="Topologi lab tiga node" />
+  </div>
+  <div class="foot"><span>Subnet &amp; IP tidak berubah sejak Minggu 4</span><span>03 / 08</span></div>
+</section>
+
+<section class="slide">
+  <div class="head">
+    <span class="kicker">Tech stack</span>
+    <h2>Satu proses aplikasi, satu basis data, satu unit systemd.</h2>
+  </div>
+  <div class="rows">
+    <div class="row"><span class="lbl">Aplikasi</span><span class="val">Nuxt 4 + Nitro <span>— SSR dan API dalam satu proses</span></span><span class="tag">:80</span></div>
+    <div class="row"><span class="lbl">Runtime</span><span class="val">Node.js 22 <span>— dijalankan systemd, bukan root</span></span><span class="tag">kabita.service</span></div>
+    <div class="row"><span class="lbl">Basis data</span><span class="val">PostgreSQL 18 <span>— 5 tabel, 60 baris telemetri</span></span><span class="tag">:5432 lokal</span></div>
+    <div class="row"><span class="lbl">Perlindungan</span><span class="val">ufw + fail2ban <span>— default deny, jail sshd</span></span><span class="tag">Fase 1</span></div>
+    <div class="row"><span class="lbl">Tanpa</span><span class="val">nginx, broker MQTT, container <span>— lebih sedikit lapisan, lebih sedikit celah</span></span><span class="tag">keputusan</span></div>
+  </div>
+  <p class="lede" style="margin-top:26px; font-size:15.5px;">Ingest meniru perangkat:
+    <span class="mono">POST /api/telemetri?token=…</span> dengan body
+    <span class="mono">{rfid, berat_kg, pakan_kg}</span>.</p>
+  <div class="foot"><span>docs/presentation-minggu9/tech_stack_declaration.md</span><span>04 / 08</span></div>
+</section>
+
+<section class="slide">
+  <div class="head" style="margin-bottom:18px;">
+    <span class="kicker">Rancangan yang disengaja</span>
+    <h2>Enam celah dibiarkan hidup —<br>supaya penutupannya bisa dibuktikan.</h2>
+  </div>
+  <table class="wk">
+    <thead><tr><th></th><th>Celah</th><th>Diuji oleh</th><th>Ditutup oleh</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>SQL injection pada <span class="mono">/api/telemetri</span> &amp; <span class="mono">/api/login</span></td><td>RT-03</td><td class="by">C-2</td></tr>
+      <tr><td>2</td><td>Password plaintext, kredensial <span class="mono">admin/admin123</span></td><td>RT-02, RT-03</td><td class="by">A-1, C-2</td></tr>
+      <tr><td>3</td><td>Token device statis, dikirim lewat query string</td><td>RT-03</td><td class="by">C-3</td></tr>
+      <tr><td>4</td><td>Telemetri tanpa validasi rentang nilai</td><td>RT-03</td><td class="by">C-3</td></tr>
+      <tr><td>5</td><td>Cookie sesi tanpa tanda tangan</td><td>RT-04</td><td class="by">A-1, C-1</td></tr>
+      <tr><td>6</td><td>SSH masih memakai password; tanpa TLS di :80</td><td>RT-02, RT-01</td><td class="by">A-2, C-1</td></tr>
+    </tbody>
   </table>
-
-  <div class="grid2" style="margin-top:16px">
-    <div class="card" style="border-color:rgba(0,229,160,.3)">
-      <h3>Mengapa Ubuntu Server</h3>
-      <ul>
-        <li>Replika memakai ThingsBoard yang sama dengan produk KABITA (bukan tiruan)</li>
-        <li><span class="mono">ufw</span>, <span class="mono">fail2ban</span>, <span class="mono">apt</span> berfungsi → hardening dapat dibuktikan</li>
-        <li>Kelemahan dipasang sengaja &amp; terdaftar, bukan kebetulan</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h3>Batasan yang kami akui terbuka</h3>
-      <ul>
-        <li>Tanpa sensor fisik / LoRaWAN / koneksi Mitra</li>
-        <li>Tanpa TLS di Fase 2 — justru jadi bahan analisis Blue Team</li>
-        <li>Tanpa timbangan/RFID fisik → telemetri dibangkitkan skrip</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="foot"><span>Sumber: docs/presentation-minggu9/tech_stack_declaration.md</span><span class="num">03 / 08</span></div>
+  <div class="foot"><span>Setiap celah sudah diuji bisa ditembus — bukan asumsi</span><span>05 / 08</span></div>
 </section>
 
 <section class="slide">
-  <div class="kicker">03 · Arsitektur Simulasi</div>
-  <h2>Topologi Attacker – Target – Monitoring</h2>
-  <p class="sub">Satu segmen L2 <span class="mono">192.168.4.0/24</span> lewat switch, tanpa gateway ke internet.</p>
-
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px;gap:14px">
-    <div class="card" style="flex:1;text-align:center;border-color:rgba(255,92,122,.4)">
-      <div class="chip red">Attacker Node</div>
-      <p style="margin-top:8px;font-size:15px;color:#E6EDF3"><strong>Kali Linux</strong></p>
-      <p class="mono" style="font-size:15px;color:#FF8FA3">192.168.4.100</p>
-      <p style="margin-top:6px;font-size:11.5px">Red Team · nmap, Metasploit, sqlmap, hping3</p>
-    </div>
-
-    <div class="card" style="flex:.72;text-align:center;background:rgba(0,229,160,.07);border-color:rgba(0,229,160,.35)">
-      <p style="font-size:12px;letter-spacing:.16em;color:#00E5A0;font-weight:700">SWITCH</p>
-      <p class="mono" style="font-size:14px;color:#C6D2DE">192.168.4.0/24</p>
-      <p style="margin-top:6px;font-size:11px;color:#7F8C9B">isolated lab · no internet</p>
-    </div>
-
-    <div class="card" style="flex:1;text-align:center;border-color:rgba(106,169,255,.4)">
-      <div class="chip blue">Target Node</div>
-      <p style="margin-top:8px;font-size:15px;color:#E6EDF3"><strong>Ubuntu Server 26.04</strong></p>
-      <p class="mono" style="font-size:15px;color:#8DC0FF">192.168.4.5</p>
-      <p style="margin-top:6px;font-size:11.5px">ThingsBoard :8080 · MQTT :1883 · PostgreSQL · SSH</p>
-    </div>
-
-    <div class="card" style="flex:1;text-align:center;border-color:rgba(0,229,160,.35)">
-      <div class="chip grn">Monitoring</div>
-      <p style="margin-top:8px;font-size:15px;color:#E6EDF3"><strong>Security Onion 3.2</strong></p>
-      <p class="mono" style="font-size:15px;color:#6DF3C1">192.168.4.200</p>
-      <p style="margin-top:6px;font-size:11.5px">Zeek + Suricata + Kibana</p>
-    </div>
+  <div class="head" style="margin-bottom:24px;">
+    <span class="kicker">Fase 1 — hasil</span>
+    <h2>Tiga kontrol berjalan, tanpa memutus layanan.</h2>
   </div>
-
-  <div class="grid2" style="margin-top:18px">
-    <div class="card">
-      <h3>Tabel IP (tetap sejak Minggu 4)</h3>
-      <table>
-        <tr><th>Host</th><th>IP</th><th>OS</th><th>Peran</th></tr>
-        <tr><td>Target Server</td><td class="mono">192.168.4.5</td><td>Ubuntu Server</td><td>Blue</td></tr>
-        <tr><td>Attacker</td><td class="mono">192.168.4.100</td><td>Kali Linux</td><td>Red</td></tr>
-        <tr><td>Monitoring</td><td class="mono">192.168.4.200</td><td>Security Onion</td><td>Blue</td></tr>
-      </table>
-    </div>
-    <div class="card">
-      <h3>Catatan visibilitas sensor</h3>
-      <p>Sensor memakai NIC1 di Internal Network <span class="mono">pbl-kel4</span> dengan
-      promiscuous <span class="mono">allow-all</span> — syarat agar trafik Attacker→Target terlihat.
-      NIC2 host-only dipakai untuk membuka web UI. Trafik sensor sendiri harus dikecualikan dari rule alert.</p>
-    </div>
+  <div class="status">
+    <div class="pill ok"><span class="k">B-1 · service</span><span class="v">24 → 18 service</span></div>
+    <div class="pill ok"><span class="k">B-2 · firewall</span><span class="v">default deny</span></div>
+    <div class="pill part"><span class="k">B-3 · patch</span><span class="v">10 paket phased</span></div>
+    <div class="pill"><span class="k">A &amp; C</span><span class="v">7 kontrol → Fase 2</span></div>
   </div>
-
-  <div class="foot"><span>Sumber: docs/design/topology.png · ip_plan.md</span><span class="num">04 / 08</span></div>
+  <div class="big" style="margin-top:46px;">
+    <span class="num">482</span>
+    <span class="cap">paket baseline dalam 50 detik: 452 di port 80, 45 koneksi baru, 30 ICMP.
+      Angka inilah pembanding saat serangan berlangsung.</span>
+  </div>
+  <p class="lede" style="margin-top:30px; font-size:15.5px;">Dashboard tetap
+    <b style="color:var(--mint)">HTTP 200</b> setelah firewall aktif — hardening tidak memutus layanan.
+    Uji dilakukan dari penyerang, bukan dari server sendiri.</p>
+  <div class="foot"><span>docs/blueteam/evidence/{baseline,hardening}</span><span>06 / 08</span></div>
 </section>
+
 <section class="slide">
-  <div class="kicker">04 · Progres Hardening &amp; Baseline</div>
-  <h2>10 kontrol, 3 kategori — plus baseline traffic normal</h2>
-  <p class="sub">Status jujur per commit Minggu 9: perintah &amp; skema bukti siap; eksekusi dijadwalkan Minggu 10.</p>
+  <div class="head" style="margin-bottom:16px;">
+    <span class="kicker">Fase 2 — rencana</span>
+    <h2>Lima skenario, satu DoS, semuanya ditutup.</h2>
+  </div>
+  <div class="sc">
+    <div class="item"><span class="id">RT-01</span><span class="nm">Discovery</span><span class="ds">nmap -sV &amp; whatweb: memetakan 22/80 dan memastikan 5432 tidak terekspos</span></div>
+    <div class="item"><span class="id">RT-02</span><span class="nm">Kredensial SSH</span><span class="ds">hydra dengan wordlist kecil; fail2ban harus mencatat kegagalan</span></div>
+    <div class="item"><span class="id">RT-03</span><span class="nm">SQL injection</span><span class="ds">auth bypass login, dump telemetri, lalu telemetri palsu masuk dashboard</span></div>
+    <div class="item"><span class="id">RT-04</span><span class="nm">Pemalsuan sesi</span><span class="ds">cookie <span class="mono">kabita_user</span> dipalsukan → dashboard terbuka tanpa login</span></div>
+    <div class="item"><span class="id">RT-05</span><span class="nm">DoS terkontrol</span><span class="ds">30 detik SYN flood ke :80, ukur waktu pemulihan — bukan dampak</span></div>
+  </div>
+  <div class="loop"><b>Serang</b><i></i><b>Deteksi</b><i></i><b>Analisis</b><i></i><b>Mitigasi</b><i></i><b>Uji ulang</b>
+    <span style="margin-left:16px; text-transform:none; letter-spacing:0; font-family:'Segoe UI'; font-size:13px;">satu siklus tuntas sebelum skenario berikutnya</span></div>
+  <div class="foot"><span>docs/redteam/attack_plan.md · docs/purple-team-log.md</span><span>07 / 08</span></div>
+</section>
 
-  <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-top:14px">
-    <div class="card">
-      <h3>A · Access &amp; Authentication <span class="chip">4 kontrol</span></h3>
-      <table>
-        <tr><td class="mono" style="width:52px">A-1</td><td>Nonaktifkan login <span class="mono">root</span> via SSH</td><td style="width:78px"><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">A-2</td><td>SSH key-based, password auth off</td><td><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">A-3</td><td>Ganti port 22 → 2222</td><td><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">A-4</td><td>fail2ban, maxretry 3 / ban 600s</td><td><span class="chip">Belum</span></td></tr>
-      </table>
-      <h3 style="margin-top:12px">B · Service &amp; Attack Surface <span class="chip">3 kontrol</span></h3>
-      <table>
-        <tr><td class="mono" style="width:52px">B-1</td><td>Matikan telnet/rsh/tftp/smtp/ircd/distccd</td><td style="width:78px"><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">B-2</td><td>ufw default-deny + whitelist 80/2222/1883/3306</td><td><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">B-3</td><td>Patch OS + hapus kredensial default DB</td><td><span class="chip">Belum</span></td></tr>
-      </table>
-      <h3 style="margin-top:12px">C · Data &amp; Application <span class="chip">3 kontrol</span></h3>
-      <table>
-        <tr><td class="mono" style="width:52px">C-1</td><td>Kredensial → env var, <span class="mono">.env</span> chmod 600</td><td style="width:78px"><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">C-2</td><td>Prepared statement + ACL topik MQTT</td><td><span class="chip">Belum</span></td></tr>
-        <tr><td class="mono">C-3</td><td>Least-privilege user DB + log auth</td><td><span class="chip">Belum</span></td></tr>
-      </table>
-    </div>
-
+<section class="slide">
+  <div class="head" style="margin-bottom:26px;">
+    <span class="kicker">Posisi sekarang</span>
+    <h2>Lab hidup, bukti tersimpan, serangan belum dijalankan.</h2>
+  </div>
+  <div class="rows">
+    <div class="row"><span class="lbl">Selesai</span><span class="val">Lab 3 node · replika KABITA · baseline · hardening awal</span><span class="tag">Fase 1</span></div>
+    <div class="row"><span class="lbl">Berjalan</span><span class="val">Sensor Onion: verifikasi cakupan &amp; aturan deteksi</span><span class="tag">Minggu 10</span></div>
+    <div class="row"><span class="lbl">Berikutnya</span><span class="val">Eksekusi RT-01…RT-05, isi lima tahap, tutup tujuh kontrol</span><span class="tag">Minggu 10–11</span></div>
+  </div>
+  <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end;">
     <div>
-      <div class="card">
-        <h3>Bukti yang disiapkan per kontrol</h3>
-        <ul>
-          <li><strong>before:</strong> config asli / <span class="mono">nmap</span> sebelum / login berhasil</li>
-          <li><strong>after:</strong> config baru / <span class="mono">nmap</span> sesudah / login ditolak</li>
-          <li>Format: <span class="mono">&lt;ID&gt;_&lt;before|after&gt;_&lt;topik&gt;.png|txt</span> di <span class="mono">docs/blueteam/evidence/</span></li>
-        </ul>
-      </div>
-      <div class="card" style="margin-top:12px">
-        <h3>Baseline Fase 1 (sudah ditetapkan)</h3>
-        <ul>
-          <li>Ping sensor→server 15 menit (RTT, jitter)</li>
-          <li>10× akses dashboard :8080, 1 kirim telemetri / 10 s</li>
-          <li>Sinkronisasi NTP harian</li>
-          <li>Artefak: <span class="mono">baseline_minggu9.pcap</span> + Zeek <span class="mono">conn.log</span></li>
-        </ul>
-      </div>
-      <div class="card" style="margin-top:12px;border-color:rgba(255,201,141,.35)">
-        <p><strong style="color:#FFC98D">Status per 22 Okt (nyata, bukan rencana):</strong>
-        target hidup, baseline terekam 440 paket/41,3 s, <span class="mono">ufw</span> +
-        <span class="mono">fail2ban</span> aktif, dashboard tetap HTTP 200. Sisa: pasang
-        ThingsBoard (stack final KABITA) lalu 7 kontrol A/C.</p>
-      </div>
+      <p class="kicker" style="color:var(--muted)">Repositori</p>
+      <p class="mono" style="font-size:16px; margin-top:10px; color:var(--ink);">github.com/anggi267/TEK1314-2026-Kel04-KelasA</p>
     </div>
+    <p class="lede" style="text-align:right; max-width:34ch; font-size:14.5px;">Semua angka di deck ini berasal
+      dari keluaran perintah di lab, bukan perkiraan.</p>
   </div>
-
-  <div class="foot"><span>Sumber: docs/blueteam/hardening_checklist.md</span><span class="num">05 / 08</span></div>
-</section>
-
-<section class="slide">
-  <div class="kicker">05 · Live Demo Singkat</div>
-  <h2>Security Onion memantau traffic lab</h2>
-  <p class="sub">Demo di layar, ±3 menit — traffic uji, bukan serangan sungguhan.</p>
-
-  <div class="grid2" style="margin-top:20px">
-    <div class="card" style="border-color:rgba(0,229,160,.35)">
-      <h3>Yang ditunjukkan</h3>
-      <ol style="padding-left:18px">
-        <li style="font-size:13px;color:#A9B6C3;margin-bottom:7px">
-          <strong style="color:#E6EDF3">Alerts &amp; Hunt</strong> — Security Onion menerima log dari sensor
-        </li>
-        <li style="font-size:13px;color:#A9B6C3;margin-bottom:7px">
-          <strong style="color:#E6EDF3">Zeek conn.log</strong> — pasangan IP Attacker ↔ Target terlihat
-        </li>
-        <li style="font-size:13px;color:#A9B6C3;margin-bottom:7px">
-          <strong style="color:#E6EDF3">tcpdump</strong> di sensor — bukti paket nyata, bukan simulasi
-        </li>
-        <li style="font-size:13px;color:#A9B6C3">
-          <strong style="color:#E6EDF3">Grid / Kibana</strong> — ringkasan trafik per host
-        </li>
-      </ol>
-    </div>
-    <div class="card">
-      <h3>Kalau demo gagal di kelas</h3>
-      <ul>
-        <li>Screenshot ber-timestamp disimpan di repo sebelum sesi</li>
-        <li>File <span class="mono">baseline_minggu9.pcap</span> dibuka ulang di Wireshark</li>
-        <li>Fokus beralih ke penjelasan rule alert yang akan dipakai Fase 2</li>
-      </ul>
-      <p style="margin-top:10px;color:#7F8C9B;font-size:11.5px">
-        Prinsip Bagian III panduan: target adalah VM replika di jaringan tertutup — tidak ada
-        pengujian ke sistem Mitra.
-      </p>
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:18px">
-    <h3>Perintah demo (ringkas)</h3>
-    <p class="mono" style="color:#7FE9C4;font-size:12px;line-height:1.9">
-      sudo tcpdump -i eth0 -nn host 192.168.4.5 &amp;&amp; ping -c 5 192.168.4.5<br>
-      ssh iotadmin@192.168.4.5 "sudo ss -tulpn" &nbsp;|&nbsp; nmap -sV 192.168.4.5<br>
-      # Security Onion → Hunt → query: event.dataset:conn source.ip:192.168.4.100
-    </p>
-  </div>
-
-  <div class="foot"><span>Demo opsional — dinilai sebagai bukti monitoring aktif</span><span class="num">06 / 08</span></div>
-</section>
-<section class="slide">
-  <div class="kicker">06 · Attack Plan Fase 2</div>
-  <h2>5 skenario, 4 kategori, tools sudah dikunci</h2>
-  <p class="sub">Setiap skenario tertuju ke Target Node replika dan berakar pada celah hasil riset Minggu 4.</p>
-
-  <table style="margin-top:12px">
-    <tr>
-      <th style="width:7%">ID</th><th style="width:17%">Kategori</th><th style="width:30%">Teknik &amp; tools</th>
-      <th style="width:24%">Target / celah acuan</th><th style="width:22%">Deteksi diharapkan</th>
-    </tr>
-    <tr>
-      <td class="mono">RT-01</td><td>Reconnaissance</td>
-      <td>Full TCP scan, service/OS fingerprint · <span class="mono">nmap</span></td>
-      <td class="mono">192.168.4.5 (semua port)</td>
-      <td>Zeek Port_Scan / ET SCAN</td>
-    </tr>
-    <tr>
-      <td class="mono">RT-02</td><td>Exploitation</td>
-      <td>Akun default ThingsBoard + brute-force SSH · <span class="mono">Burp</span>, <span class="mono">Hydra</span></td>
-      <td class="mono">:8080 tenant@… · :22 iotadmin</td>
-      <td>auth.log, log auth ThingsBoard</td>
-    </tr>
-    <tr>
-      <td class="mono">RT-03</td><td>Web / API</td>
-      <td>Curi token device → injeksi telemetri palsu · <span class="mono">Burp</span>, <span class="mono">curl</span></td>
-      <td class="mono">:8080 /api/v1/&lt;token&gt;/telemetry</td>
-      <td>Rule POST /api/v1/*, anomali nilai</td>
-    </tr>
-    <tr>
-      <td class="mono">RT-04</td><td>Protokol IoT</td>
-      <td>MQTT spoof dengan token device · <span class="mono">mosquitto_pub</span>, MQTT Explorer</td>
-      <td class="mono">:1883 v1/devices/me/telemetry</td>
-      <td>Rule kustom (belum ada bawaan)</td>
-    </tr>
-    <tr>
-      <td class="mono">RT-05</td><td>Availability <span class="chip">maks. 1</span></td>
-      <td>SYN flood 60 detik · <span class="mono">hping3</span></td>
-      <td class="mono">:8080 dashboard ThingsBoard</td>
-      <td>ET DOS, Zeek conn.log (S0)</td>
-    </tr>
-  </table>
-
-  <div class="grid3" style="margin-top:16px">
-    <div class="card">
-      <h3 style="color:#00E5A0">Kenapa rencana ini sah</h3>
-      <p>Semua tools disebut sejak awal (bukan saat eksekusi), tiap skenario punya kontrol
-      mitigasi pasangan di checklist — jadi Blue Team bisa siapkan deteksi lebih dulu.</p>
-    </div>
-    <div class="card">
-      <h3 style="color:#FFC98D">Batas yang kami patuhi</h3>
-      <p>Hanya <span class="mono">192.168.4.0/24</span>; DoS ≤60 detik satu service; snapshot
-      sebelum tiap sesi; tidak menyentuh sistem Mitra.</p>
-    </div>
-    <div class="card">
-      <h3 style="color:#8DC0FF">Siklus tertutup</h3>
-      <p>Tiap serangan diuji ulang setelah mitigasi. Yang dinilai bukan rumitnya serangan,
-      tapi bukti bahwa <strong>serangan yang sama kini gagal</strong>.</p>
-    </div>
-  </div>
-
-  <div class="foot"><span>Sumber: docs/redteam/attack_plan.md</span><span class="num">07 / 08</span></div>
-</section>
-
-<section class="slide">
-  <div class="kicker">07 · Kendala &amp; Pembelajaran</div>
-  <h2>Yang menghambat, dan langkah berikutnya</h2>
-
-  <div class="grid2" style="margin-top:16px">
-    <div class="card">
-      <h3>Kendala</h3>
-      <table>
-        <tr><td><strong>Target generik vs tuntutan IoT</strong></td><td>Target diganti ke Ubuntu Server; kelemahan dipasang sengaja agar skenario tetap punya sasaran</td></tr>
-        <tr><td><strong>RAM laptop</strong></td><td>3 VM tidak bisa jalan bersamaan → Security Onion dijadwalkan bergantian</td></tr>
-        <tr><td><strong>Jeda UTS</strong></td><td>Lab idle 2 minggu → perintah &amp; skema bukti disiapkan lebih dulu</td></tr>
-        <tr><td><strong>Deteksi MQTT</strong></td><td>Tidak ada signature bawaan → harus tulis rule kustom</td></tr>
-      </table>
-    </div>
-    <div class="card">
-      <h3>Pembelajaran</h3>
-      <ul>
-        <li>Hardening harus <strong>tiga lapis</strong> (akses, permukaan serangan, data/aplikasi) — satu layer tidak cukup</li>
-        <li>Tanpa baseline normal, alert tidak bisa dinilai "benar" atau "noise"</li>
-        <li>Rencana serangan yang tool-nya jelas membuat deteksi bisa disiapkan paralel, bukan reaktif</li>
-        <li>Celah paling berbahaya di backend IoT sering berupa <strong>default credential &amp; broker tanpa auth</strong>, bukan exploit rumit</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:16px;border-color:rgba(0,229,160,.35)">
-    <h3>Langkah berikutnya (Fase 2)</h3>
-    <table>
-      <tr><th style="width:14%">Minggu</th><th>Target</th><th style="width:26%">Artefak</th></tr>
-      <tr><td class="mono">10</td><td>Snapshot, baseline pcap, eksekusi hardening prioritas, RT-01 &amp; RT-02</td><td class="mono">evidence/rt01, rt02, blueteam</td></tr>
-      <tr><td class="mono">11</td><td>RT-03–RT-05, penutupan 5 tahap Purple Team Loop</td><td class="mono">purple-team-log.md</td></tr>
-      <tr><td class="mono">11</td><td>Vulnerability Assessment Report (dasar Incident Report Minggu 12)</td><td class="mono">docs/reports/</td></tr>
-    </table>
-  </div>
-
-  <p style="margin-top:14px;font-size:13px;color:#8B98A5">
-    Repo publik: <span class="mono" style="color:#7FE9C4">github.com/anggi267/TEK1314-2026-Kel04-KelasA</span>
-    · semua artefak Minggu 9 sudah di-commit sebelum sesi.
-  </p>
-
-  <div class="foot"><span>Terima kasih — siap menerima pertanyaan</span><span class="num">08 / 08</span></div>
+  <div class="foot"><span>Kelompok 4 · Kelas A · TEK1314 Keamanan Siber</span><span>08 / 08</span></div>
 </section>
 
 </body>
