@@ -40,6 +40,12 @@ berjalan, sudo NOPASSWD untuk otomasi. Replika ThingsBoard menyusul sesuai
 
 ---
 
+> **Cara mengeksekusi kontrol di bawah:** ikuti urutan, perintah, dan nama bukti pada
+> [`rencana-eksekusi-hardening.md`](rencana-eksekusi-hardening.md) (versi cetak:
+> `Rencana-Eksekusi-Hardening-Kelompok4.docx/.pdf`). Dokumen itu memisahkan kontrol yang boleh
+> dijalankan sebelum serangan (Tahap 1) dan kontrol penutup yang baru boleh setelah serangan
+> baseline berhasil (Tahap 2) — supaya bukti `before` tidak palsu.
+
 ## A. Access & Authentication
 
 ### A-1 · Nonaktifkan login `root` langsung via SSH
