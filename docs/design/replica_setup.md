@@ -15,6 +15,11 @@ Replika ini meniru bagian backend-nya; tidak ada perangkat fisik dan tidak ada d
 
 Kode: `app/kabita/`. Deploy ulang: `python scripts/docs/deploy_kabita.py`.
 
+Catatan jaringan lab: dari Target Node, `registry.npmjs.org` tidak bisa dihubungi (timeout),
+sedangkan `registry.npmmirror.com` bisa. Karena itu build dilakukan di host
+(`npm install && npm run build`) lalu hasil `.output` dikirim ke VM — VM tidak perlu npm install.
+Kalau ingin build langsung di VM, set dulu `npm config set registry https://registry.npmmirror.com`.
+
 ## Model data
 
 | Tabel | Isi |
