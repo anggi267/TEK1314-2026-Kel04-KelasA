@@ -20,7 +20,8 @@ bukti apa yang ada, dan apa yang tersisa. Rincian teknis per topik ada di dokume
 | Instalasi OS target | ✅ Ubuntu Server 26.04.1 LTS (autoinstall) | `vm_config.md` §2.1 |
 | IP lab + ping 3 node | ✅ Semua arah 0% loss, sensor merekam trafik | §3 |
 | Akses sudo untuk otomasi | ✅ `iotadmin` NOPASSWD | §4.1 |
-| Stack replika IoT (nginx, dashboard, API, MariaDB, Mosquitto) | ✅ Terpasang & teruji (HTTP 200, API JSON) | `docs/reports/fase1/laporan-fase1.md` §4 |
+| Stack **sementara** (nginx, PHP-FPM, MariaDB, Mosquitto) | ✅ Terpasang & teruji (HTTP 200, API JSON) — dipakai merekam baseline awal | `docs/reports/fase1/laporan-fase1.md` §4 |
+| Stack **final KABITA** (ThingsBoard CE + PostgreSQL, port 8080/1883/5432) | ❌ Belum terpasang — panduan siap di `docs/design/replica_setup.md` | `docs/presentation-minggu9/tech_stack_declaration.md` |
 | Baseline traffic normal | ✅ 440 paket / 41,3 s + pcap | `docs/blueteam/evidence/baseline/` |
 | Hardening awal Fase 1 (patch, ufw, fail2ban, minimalisasi service) | ✅ 3 kontrol "Sebagian" terdokumentasi | `docs/blueteam/evidence/hardening-fase1/` |
 | Hardening 10 kontrol penuh (bagian VIII) | ❌ 7 kontrol belum (sengaja, sasaran Fase 2) | `docs/blueteam/hardening_checklist.md` |
@@ -78,7 +79,7 @@ Bukti sensor melihat trafik lab (`tcpdump -i eth0` di Onion):
 | IP NAT | `10.0.3.15/24` di `enp0s8` (DHCP) |
 | Sudo | `/etc/sudoers.d/90-pbl-nopasswd` → `iotadmin ALL=NOPASSWD: ALL` (diverifikasi `sudo -n whoami` = root) |
 | sshd | aktif, password auth aktif, `OpenSSH 10.2p1` |
-| Paket dasar | hanya bawaan installer (nginx/DVWA/MariaDB/Mosquitto **belum** dipasang) |
+| Paket dasar | stack sementara terpasang (nginx/PHP-FPM/MariaDB/Mosquitto); **ThingsBoard + PostgreSQL belum** |
 | Cara pasang | autoinstall (seed cloud-init `CIDATA`) + disk fixed 25 GB |
 
 ### 4.2 Attacker Node — Kali
@@ -149,9 +150,9 @@ VBM="/c/Program Files/Oracle/VirtualBox/VBoxManage.exe"
 
 ## 7. Yang belum selesai (urutan prioritas)
 
-1. **Stack replika** di Target: nginx + PHP-FPM + DVWA + MariaDB (`iot_db`) + Mosquitto
-   (`allow_anonymous true`), user OS `iotadmin` sudah ada. Panduan: `docs/design/replica_setup.md`.
-2. **Baseline traffic normal** (`baseline_minggu9.pcap`, `baseline_summary.md`) sebelum serangan.
+1. **Pasang replika KABITA final**: ThingsBoard CE + PostgreSQL di Target (port 8080/1883/5432),
+   ganti stack sementara nginx/PHP/MariaDB/Mosquitto. Panduan: `docs/design/replica_setup.md`.
+2. **Baseline baru** pada ThingsBoard (pcap + metrik) — baseline lama hanya berlaku untuk stack sementara.
 3. **Hardening 10 kontrol** A/B/C + bukti before/after (`docs/blueteam/hardening_checklist.md`).
 4. **Eksekusi RT-01…RT-05** + tutup 5 tahap Purple Team Loop (`docs/purple-team-log.md`).
 5. **Verifikasi fungsional Security Onion**: `so-status`, apakah Elastic/Suricata benar-benar

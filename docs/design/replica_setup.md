@@ -1,121 +1,194 @@
-# Setup Target Node Replika — Ubuntu Server (Sengaja Rentan)
+# Replika Backend KABITA di Target Node (Ubuntu Server + ThingsBoard)
 
-**Target Node:** `192.168.4.5` · **OS:** Ubuntu Server LTS 26.04 (lihat catatan versi)
-**Tujuan:** membangun replika *backend* sistem IoT — dashboard, API, database, broker MQTT —
-yang **menyerupai produksi tetapi sengaja diberi kelemahan terkontrol** agar skenario Red Team
-Bagian IX dapat dijalankan dan dimitigasi Blue Team.
+Panduan membangun replika backend **KABITA** — pencatatan berat badan & pakan kambing — di
+Target Node `192.168.4.5`, sesuai `docs/presentation-minggu9/tech_stack_declaration.md`.
 
-> ⚠ Kelemahan di dokumen ini **hanya boleh** dipasang di VM lab `192.168.4.5` dalam
-> Internal Network `pbl-kel4`. Jangan pernah meniru konfigurasi ini di server nyata.
+Replika memakai **ThingsBoard Community Edition** yang sama dengan produk asli, ditambah
+PostgreSQL. Perangkat fisik (timbangan, RFID) digantikan skrip pengirim telemetri.
 
-## 0. Catatan versi OS (wajib dibaca)
+---
 
-VM `Target node` yang ada sekarang terdeteksi **Ubuntu 25.04 (Plucky Puffin)** — rilis
-interim yang dukungannya sudah berakhir Januari 2026. Repositori keamanannya tertutup,
-sehingga kontrol **B-3 (patch OS)** tidak bisa dibuktikan.
+## 1. Prasyarat
 
-**Tindakan:** pasang ulang dengan **Ubuntu Server 26.04 LTS** (menyusul 24.04 LTS bila ingin
-lebih matang). Setelah itu `apt update && apt upgrade` harus berjalan tanpa error — itulah
-bukti awal untuk B-3.
-
-## 1. Prasyarat jaringan (sudah dikonfigurasi di sisi VirtualBox)
-
-| Adapter | Fungsi | Setting |
+| Item | Nilai | Keterangan |
 |---|---|---|
-| NIC 1 | Segmen lab (sama dengan Kali & sensor) | Internal Network `pbl-kel4` |
-| NIC 2 | Internet untuk update paket | NAT |
+| VM | 2 vCPU / **4096 MB** RAM / disk ≥ 25 GB | ThingsBoard + PostgreSQL butuh ≥ 4 GB; 2 GB akan OOM |
+| OS | Ubuntu Server 26.04.1 LTS | sudah terpasang, IP `192.168.4.5/24` |
+| Java | OpenJDK 17 (JRE) | wajib untuk ThingsBoard 4.x |
+| PostgreSQL | 16/17 | Ubuntu 26.04 mungkin membawa versi lebih baru — cek kompatibilitas rilis TB |
+| Snapshot | `20-lab-ready` | titik balik bila instalasi gagal |
 
-IP statis di dalam guest (netplan, `/etc/netplan/50-pbl.yaml`):
+> **Catatan penting:** naikkan RAM VM ke 4096 MB sebelum instalasi
+> (`VBoxManage modifyvm PBL-K4-01-Target-Ubuntu --memory 4096`, VM harus mati).
+
+---
+
+## 2. Instalasi ThingsBoard CE (langkah perintah)
+
+### 2.1 Dependensi
+
+```bash
+sudo apt update
+sudo apt install -y openjdk-17-jre-headless postgresql curl gnupg
+java -version            # harus 17.x
+psql --version           # catat versinya
+```
+
+Bila `openjdk-17-jre-headless` tidak tersedia di repo Ubuntu 26.04, gunakan JDK 17 dari
+Adoptium:
+
+```bash
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
+echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release; echo $VERSION_CODENAME) main" \
+  | sudo tee /etc/apt/sources.list.d/adoptium.list
+sudo apt update && sudo apt install -y temurin-17-jre
+```
+
+### 2.2 Database
+
+```bash
+sudo -u postgres psql <<'SQL'
+CREATE DATABASE thingsboard;
+CREATE USER thingsboard WITH PASSWORD 'thingsboard';
+GRANT ALL PRIVILEGES ON DATABASE thingsboard TO thingsboard;
+ALTER DATABASE thingsboard OWNER TO thingsboard;
+SQL
+```
+
+### 2.3 Paket ThingsBoard
+
+```bash
+cd /tmp
+TB_VER=4.2.1                      # sesuaikan dengan rilis stabil terbaru
+curl -L -o thingsboard.deb \
+  "https://github.com/thingsboard/thingsboard/releases/download/v${TB_VER}/thingsboard-${TB_VER}.deb"
+sudo dpkg -i thingsboard.deb
+```
+
+### 2.4 Konfigurasi koneksi database
+
+Edit `/etc/thingsboard/conf/thingsboard.conf`, tambahkan:
+
+```properties
+export DATABASE_ENTITIES_TYPE=sql
+export DATABASE_TS_TYPE=sql
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/thingsboard
+export SPRING_DATASOURCE_USERNAME=thingsboard
+export SPRING_DATASOURCE_PASSWORD=thingsboard
+export JAVA_OPTS="$JAVA_OPTS -Xms1G -Xmx1536M -XX:+UseG1GC"
+```
+
+### 2.5 Inisialisasi skema + akun demo
+
+```bash
+sudo /usr/share/thingsboard/bin/install/install.sh --loadDemo
+sudo systemctl enable --now thingsboard
+sudo journalctl -u thingsboard -f     # tunggu "Started Thingsboard"
+```
+
+Start pertama memakan 2–5 menit. Bila gagal, periksa `/var/log/thingsboard/thingsboard.log`.
+
+### 2.6 Verifikasi
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/login   # harap 200
+ss -tulpn | grep -E ':(8080|1883|5432) '
+```
+
+Login UI: `http://192.168.4.5:8080`
+Akun default (sengaja dibiarkan): `tenant@thingsboard.org` / `tenant`,
+`sysadmin@thingsboard.org` / `sysadmin`.
+
+---
+
+## 3. Menyiapkan perangkat KABITA (device + telemetri)
+
+### 3.1 Buat device
+
+1. Login sebagai tenant → **Devices** → **+** → nama `KABITA-Timbangan-01`, tipe `timbangan`.
+2. Buka device → **Manage credentials** → salin **Access token**.
+
+### 3.2 Kirim telemetri (menggantikan timbangan fisik)
+
+```bash
+# jalur HTTP
+curl -s -X POST "http://192.168.4.5:8080/api/v1/<TOKEN>/telemetry" \
+  -H 'Content-Type: application/json' \
+  -d '{"berat_kg":32.4,"pakan_kg":1.8,"rfid":"KMB-014"}'
+
+# jalur MQTT (pakai client mosquitto)
+mosquitto_pub -h 192.168.4.5 -p 1883 -u '<TOKEN>' -P '' \
+  -t v1/devices/me/telemetry -m '{"berat_kg":33.1,"pakan_kg":1.6,"rfid":"KMB-014"}'
+```
+
+### 3.3 Dashboard
+
+Buat dashboard **KABITA — Berat & Pakan** dengan widget time-series `berat_kg` dan `pakan_kg`,
+lalu bagikan sebagai **public** (kebiasaan lapangan yang menjadi temuan: dashboard publik tanpa
+autentikasi).
+
+---
+
+## 4. Kelemahan yang sengaja dibiarkan (sesuai deklarasi)
+
+| # | Kondisi | Cara menyesuaikan | Skenario |
+|---|---|---|---|
+| 1 | Kredensial default tidak diganti | jangan ubah akun tenant/sysadmin | RT-02 |
+| 2 | SSH password auth + password `123` | `sshd_config` tetap `PasswordAuthentication yes` | RT-02 |
+| 3 | Token device dipakai apa adanya | token disalin ke skrip serangan, tanpa rotasi | RT-03/RT-04 |
+| 4 | Dashboard dibagikan publik | aktifkan public dashboard | RT-03 |
+| 5 | MQTT tanpa TLS | jangan aktifkan TLS pada transport MQTT | RT-04 |
+| 6 | PostgreSQL terbuka | `listen_addresses='*'` + satu entri `pg_hba` untuk `192.168.4.0/24` | RT-01 |
+| 7 | Tanpa rate limit | jangan pasang reverse proxy/limit di depan 8080 | RT-05 |
+
+Setiap butir **wajib** punya baris penutup di `docs/blueteam/hardening_checklist.md`.
+
+---
+
+## 5. Rollback dan pemulihan
+
+```bash
+sudo systemctl stop thingsboard        # hentikan sebelum snapshot/rollback
+VBoxManage snapshot "PBL-K4-01-Target-Ubuntu" restore "20-lab-ready"
+```
+
+Untuk mengulang instalasi tanpa rollback:
+
+```bash
+sudo apt purge -y thingsboard
+sudo -u postgres psql -c 'DROP DATABASE thingsboard;' -c 'DROP USER thingsboard;'
+```
+
+---
+
+## 6. Catatan sumber daya (jujur)
+
+- ThingsBoard CE butuh Java heap ~1–1,5 GB + PostgreSQL ~150 MB + OS ~400 MB. Pada 2 GB RAM,
+  service akan OOM-kill saat start; **4096 MB** adalah batas aman minimum untuk lab ini.
+- Tiga VM hidup bersamaan (Target 4 GB, Kali 2 GB, Onion 6 GB) = 12 GB; host punya 19,7 GB,
+  jadi jalankan Onion hanya saat pengujian deteksi.
+- Unduhan paket (JDK ±180 MB, PostgreSQL ±50 MB, ThingsBoard ±250 MB) memakan waktu pada
+  jaringan lambat; hentikan layanan yang tidak perlu lebih dulu agar tidak memicu timeout.
+
+---
+
+## 7. Alternatif bila RAM tidak cukup: Docker Compose
 
 ```yaml
-network:
-  version: 2
-  ethernets:
-    enp0s3:
-      dhcp4: false
-      addresses: [192.168.4.5/24]
-    enp0s8:
-      dhcp4: true
+services:
+  postgres:
+    image: postgres:16
+    environment: [POSTGRES_DB=thingsboard, POSTGRES_PASSWORD=thingsboard, POSTGRES_USER=thingsboard]
+    volumes: [tb-pg:/var/lib/postgresql/data]
+  thingsboard:
+    image: thingsboard/tb-postgres:4.2.1
+    ports: ["8080:9090", "1883:1883", "5683:5683/udp"]
+    environment: [TB_QUEUE_TYPE=in-memory]
+    volumes: [tb-data:/data, tb-logs:/var/log/thingsboard]
+volumes: {tb-pg: {}, tb-data: {}, tb-logs: {}}
 ```
 
-```bash
-sudo netplan apply && ip -brief a
-```
-
-## 2. Stack yang dipasang (peta ke arsitektur IoT)
-
-| Komponen IoT | Perangkat lunak di replika | Port |
-|---|---|---|
-| Dashboard monitoring | nginx + PHP-FPM + DVWA (aplikasi sengaja rentan) | 80 |
-| API gateway | `api.php` kustom (menerima `?id=` untuk data sensor) | 80 |
-| Database | MariaDB/MySQL (`iot_db`: `users`, `sensor_readings`) | 3306 |
-| Broker MQTT | Mosquitto, **anonymous diaktifkan** (kelemahan disengaja) | 1883 |
-| Manajemen | OpenSSH, user `iotadmin` dengan password lemah | 22 |
-
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y nginx php-fpm php-mysql mariadb-server mosquitto mosquitto-clients unzip
-
-# dashboard: DVWA (vulnerable by design -> bahan RT-03)
-cd /var/www && sudo git clone https://github.com/digininja/DVWA.git iot-dashboard
-sudo chown -R www-data:www-data /var/www/iot-dashboard
-sudo cp /var/www/iot-dashboard/config/config.inc.php.dist /var/www/iot-dashboard/config/config.inc.php
-
-# database
-sudo mysql -e "CREATE DATABASE iot_db; CREATE DATABASE dvwa;
-  CREATE USER 'iotadmin'@'localhost' IDENTIFIED BY 'iotadmin123';
-  GRANT ALL ON iot_db.* TO 'iotadmin'@'localhost';
-  GRANT ALL ON dvwa.* TO 'iotadmin'@'localhost'; FLUSH PRIVILEGES;"
-
-# MQTT: anonymous + tanpa ACL  (INI KELEMAHAN YANG DISENGAJA)
-sudo tee /etc/mosquitto/conf.d/pbl.conf >/dev/null <<'EOF'
-listener 1883
-allow_anonymous true
-EOF
-sudo systemctl restart mosquitto
-
-# user manajemen dengan password lemah (bahan RT-02)
-sudo adduser --disabled-password --gecos "" iotadmin 2>/dev/null || true
-echo 'iotadmin:iotadmin123' | sudo chpasswd
-sudo usermod -aG sudo iotadmin
-```
-
-## 3. Kelemahan yang sengaja dipasang (dan siapa yang mengujinya)
-
-| # | Kelemahan | Lokasi | Skenario | Kontrol penutup |
-|---|---|---|---|---|
-| 1 | Password lemah `iotadmin:iotadmin123` + SSH password auth aktif | :22 | RT-02 | A-2, A-4 |
-| 2 | SQL injection pada `api.php` & DVWA level low | :80 | RT-03 | C-2, C-3 |
-| 3 | MQTT anonymous, tanpa ACL topik | :1883 | RT-04 | C-2 |
-| 4 | MySQL mendengarkan di semua interface | :3306 | RT-03 | B-2 |
-| 5 | Service bawaan tidak dipakai tetap hidup | berbagai | RT-01 | B-1 |
-| 6 | Tidak ada rate limit di dashboard | :80 | RT-05 | ufw limit |
-
-**Aturan penting:** setiap kelemahan di tabel ini **wajib** punya kontrol penutup di
-`docs/blueteam/hardening_checklist.md`. Kalau sebuah kelemahan tidak bisa ditutup, hapus dari
-daftar — kalian tidak boleh menyisakan serangan yang tetap berhasil di Tahap 5.
-
-## 4. Verifikasi replika siap diuji
-
-```bash
-# dari Target
-sudo ss -tulpn | grep -E ':(22|80|3306|1883)'
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/iot-dashboard/login.php
-
-# dari Kali
-nmap -sV -p22,80,3306,1883 192.168.4.5
-mosquitto_sub -h 192.168.4.5 -t '#' -v      # harus bisa connect tanpa kredensial
-curl "http://192.168.4.5/iot-dashboard/vulnerabilities/sqli/?id=1&Submit=Submit"
-```
-
-Bila keempat port terlihat dari Kali dan `mosquitto_sub` tersambung tanpa kredensial, replika
-sudah dalam kondisi "rentan sesuai rencana" dan siap masuk sesi S1 (baseline + hardening).
-
-## 5. Urutan aman: rentan dulu, hardening kemudian
-
-1. Pasang stack **apa adanya** (dokumen ini) → rekam bukti `before`.
-2. Jalankan RT-01…RT-05 pada kondisi ini (Tahap 1 Purple Team Loop).
-3. Baru terapkan hardening A/B/C; setiap penutupan diuji ulang (Tahap 5).
-
-Kalau hardening dilakukan sebelum serangan pertama, tidak akan ada bukti "sebelum" dan nilai
-kriteria hardening (30%) sulit dipertahankan.
+Docker memakai ±2,5 GB RAM total — pilihan pertama bila kapasitas host menipis, tetapi
+menambah satu lapisan yang harus di-hardening sendiri (grup `docker` = root).

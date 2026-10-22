@@ -1,61 +1,95 @@
-# Deklarasi Tech Stack & Replikasi — Kelompok 4 (TEK1314 Kelas A)
+# Deklarasi Tech Stack & Replikasi — KABITA (Kelompok 4)
 
-**Pertemuan:** 9 (Checkpoint Fase 1 → Fase 2) · **Revisi:** Minggu 9 (target diganti ke Ubuntu Server)
+**Produk IoT:** KABITA — pencatatan berat badan dan pakan kambing
+**Pertemuan:** 9 (Checkpoint Fase 1 → 2) · **Revisi:** 22 Oktober 2026 (klarifikasi produk asli)
 **Subnet lab:** `192.168.4.0/24` · **Target Node:** `192.168.4.5` — Ubuntu Server LTS 26.04
 
 ---
 
-## 1. Tabel Deklarasi Tech Stack (asli → replika)
+## 1. Konteks produk (KABITA)
 
-Karena replika memakai **Ubuntu Server**, komponen backend dapat dipetakan nyaris satu-satu.
-Yang perlu disesuaikan hanya `[[ISI: ...]]` (detail produk IoT asli kelompok).
+KABITA adalah sistem pencatatan peternakan kambing. Perangkat lapangan menimbang kambing dan
+pakan, lalu mengirim data ke backend untuk dicatat per ekor, per kandang, dan per hari.
 
-| # | Komponen Backend | Teknologi pada proyek IoT asli | Replika di Target Node (Ubuntu Server) | Port | Catatan |
+| Komponen asli KABITA | Fungsi |
+|---|---|
+| Timbangan badan (load cell + HX711) | mengukur berat kambing (kg) |
+| Timbangan pakan / wadah pakan | mengukur pakan yang diberikan (kg) |
+| Penanda identitas (ear tag / RFID) | mengidentifikasi kambing |
+| Gateway (ESP32 / Raspberry Pi) | mengirim telemetri ke backend |
+| **Backend: ThingsBoard CE di Ubuntu Server** | menyimpan telemetri, dashboard, aturan, API |
+| PostgreSQL | penyimpanan entity & telemetri ThingsBoard |
+
+**Yang dinilai sebagai infrastruktur backend** dan menjadi objek SOC: ThingsBoard beserta
+PostgreSQL dan portnya — bukan timbangan fisik.
+
+---
+
+## 2. Tabel Deklarasi Tech Stack (asli → replika)
+
+Replika memakai **ThingsBoard Community Edition yang sama** seperti produk asli, sehingga
+pemetaan bersifat 1:1. Yang tidak direplikasi hanya perangkat fisik (timbangan, RFID), yang
+digantikan skrip pengirim telemetri.
+
+| # | Komponen Backend | Teknologi pada KABITA asli | Replika di Target Node | Port | Catatan |
 |---|---|---|---|---|---|
-| 1 | Sistem operasi server | Ubuntu Server LTS 26.04 `[[ISI]]` | Ubuntu Server LTS 26.04 | — | Sama jenis; dukungan keamanan aktif → `apt upgrade` bisa dibuktikan (B-3) |
-| 2 | Web dashboard monitoring | Aplikasi web (Nginx + PHP/Node) `[[ISI]]` | Nginx + PHP-FPM + DVWA sebagai dashboard | 80/tcp | DVWA dipakai karena *vulnerable by design* → bahan RT-03 |
-| 3 | API gateway | REST: `/api/sensor`, `/api/aktuator` `[[ISI]]` | `api.php` (parameter `?id=`) di direktori dashboard | 80/tcp | Endpoint sengaja dibuat tanpa prepared statement |
-| 4 | Database / penyimpanan | MySQL 8 / MariaDB `[[ISI]]` | MariaDB — database `iot_db` (`users`, `sensor_readings`) | 3306/tcp | Mendengarkan di semua interface (kelemahan disengaja #4) |
-| 5 | Protokol komunikasi sensor | MQTT 3.1.1 (Mosquitto) `[[ISI]]` | Mosquitto, `allow_anonymous true`, tanpa ACL topik | 1883/tcp | Kelemahan disengaja #3 → RT-04; ditutup lewat C-2 |
-| 6 | Autentikasi pengguna | JWT / session + role `[[ISI]]` | Session login dashboard + user OS `iotadmin` | 80, 22 | Password lemah `iotadmin123` (kelemahan disengaja #1) |
-| 7 | Manajemen jarak jauh | SSH key-based, non-root `[[ISI]]` | OpenSSH, password auth aktif, port 22 | 22/tcp | Objek kontrol A-1…A-4 |
-| 8 | Telemetri & log | Syslog + agent monitoring `[[ISI]]` | syslog + `auth.log` → diteruskan ke Security Onion | 514/udp | Sumber log Blue Team |
-| 9 | Segmentasi & kontrol jaringan | VLAN perangkat lapangan vs server `[[ISI]]` | Satu segmen Internal Network `pbl-kel4` + firewall host | — | Keterbatasan lab: dipisahkan di host (ufw), bukan VLAN fisik |
-| 10 | Pembaruan firmware/perangkat | OTA update bertanda tangan `[[ISI]]` | Tidak direplikasi | — | Dinyatakan terbuka di presentasi |
+| 1 | Sistem operasi server | Ubuntu Server LTS | Ubuntu Server **26.04.1 LTS** | — | sama |
+| 2 | Platform IoT / dashboard | **ThingsBoard CE** (Java 17, Spring Boot) | ThingsBoard CE, service `thingsboard` | **8080** | UI + REST API |
+| 3 | Database | PostgreSQL 16 | PostgreSQL 16, database `thingsboard` | 5432 | hanya `127.0.0.1` |
+| 4 | Transport MQTT perangkat | ThingsBoard MQTT transport | MQTT transport ThingsBoard | **1883** | autentikasi memakai **device access token** |
+| 5 | Transport HTTP perangkat | REST `POST /api/v1/{token}/telemetry` | sama | 8080 | token di URL (kebiasaan nyata di lapangan) |
+| 6 | Model data | Device per timbangan; telemetri `berat_kg`, `pakan_kg`, `rfid` | sama (device `KABITA-Timbangan-01`) | — | 1 device = 1 timbangan |
+| 7 | Akun | Tenant admin + sysadmin | default `tenant@thingsboard.org`, `sysadmin@thingsboard.org` | — | **kredensial default** (kelemahan disengaja) |
+| 8 | Manajemen server | SSH | OpenSSH port 22 | 22 | password auth aktif (kelemahan disengaja) |
+| 9 | TLS | produksi: HTTPS | tidak dipakai di replika | — | dinyatakan terbuka; jadi temuan |
+| 10 | Perangkat fisik | timbangan, RFID, gateway | **tidak ada** — digantikan `mosquitto_pub`/`curl` | — | batas replika |
 
-## 2. Kelemahan yang sengaja dipasang (bukan kelalaian)
+### 2.1 Alur data yang direplikasi
 
-Replika **harus** punya celah agar skenario Red Team Bagian IX punya sasaran nyata. Daftar
-lengkap ada di `docs/design/replica_setup.md` Bagian 3:
+```text
+[timbangan] --MQTT 1883 (device token)--> [ThingsBoard] --JDBC--> [PostgreSQL 5432]
+     |                                            |
+     +--HTTP 8080 /api/v1/{token}/telemetry-------> dashboard KABITA (8080)
+```
 
-| # | Kelemahan | Skenario | Ditutup oleh |
-|---|---|---|---|
-| 1 | Password lemah `iotadmin` + SSH password auth | RT-02 | A-2, A-4 |
-| 2 | SQL injection `api.php` / DVWA level low | RT-03 | C-2, C-3 |
-| 3 | MQTT anonymous tanpa ACL | RT-04 | C-2 |
-| 4 | MySQL terbuka di semua interface | RT-03 | B-2 |
-| 5 | Service tidak terpakai tetap hidup | RT-01 | B-1 |
-| 6 | Tanpa rate limit di dashboard | RT-05 | ufw limit |
+Telemetri contoh yang dikirim replika:
 
-## 3. Mengapa Ubuntu Server (bukan Metasploitable2)
+```json
+{"berat_kg": 32.4, "pakan_kg": 1.8, "rfid": "KMB-014"}
+```
 
-1. **Konsisten dengan narasi IoT** — backend yang diamankan memang Ubuntu/Nginx/MySQL/MQTT,
-   bukan kumpulan service acak.
-2. **Hardening dapat dibuktikan dengan tool standar** — `ufw`, `fail2ban`, `systemctl`,
-   `apt upgrade` semuanya tersedia dan berfungsi (Metasploitable2 berbasis Ubuntu 8.04 yang
-   repositorinya sudah EOL, sehingga beberapa kontrol mustahil dieksekusi).
-3. **Tiga kategori hardening (A/B/C) dapat diuji ujung ke ujung** — termasuk patching dan
-   pembatasan permukaan serangan di level aplikasi.
-4. **Risiko yang dikelola:** karena OS tidak rentan bawaan, kelemahan dipasang eksplisit
-   (Bagian 2). Ini justru lebih jujur: setiap celah punya kontrol penutup yang diuji.
+---
+
+## 3. Kelemahan yang sengaja dipasang (sasaran Fase 2)
+
+Semua kelemahan di bawah adalah kondisi yang **lazim ditemukan** pada deployment ThingsBoard di
+lapangan, sehingga skenario Red Team relevan dengan produk asli.
+
+| # | Kelemahan | Lokasi | Skenario | Ditutup pada Fase 2 oleh |
+|---|---|---|---|---|
+| 1 | Kredensial default `tenant@thingsboard.org`/`tenant`, `sysadmin`/`sysadmin` | 8080 | RT-02 | A-1, A-2, A-4, B-3 |
+| 2 | Password SSH lemah `iotadmin`/`123`, password auth aktif | 22 | RT-02 | A-1, A-2, A-4 |
+| 3 | Device access token dipakai apa adanya (dapat dicuri/ditebak) | 1883/8080 | RT-03, RT-04 | C-2 |
+| 4 | Telemetri dapat dipalsukan (berat/pakan) tanpa validasi | 8080/1883 | RT-03, RT-04 | C-2 |
+| 5 | MQTT tanpa TLS, token terkirim plaintext | 1883 | RT-04 | (temuan; TLS dicatat) |
+| 6 | PostgreSQL terbuka ke segmen lab pada konfigurasi awal | 5432 | RT-01 | B-2 |
+| 7 | Tanpa rate limit pada API/dashboard | 8080 | RT-05 | ufw limit |
+
+**Aturan:** setiap kelemahan wajib punya kontrol penutup di `hardening_checklist.md`. Serangan
+yang tetap berhasil setelah mitigasi ditandai `TERBUKA` di `purple-team-log.md`.
+
+---
 
 ## 4. Batasan replika (dinyatakan terbuka di presentasi)
 
-- Tidak ada perangkat sensor fisik, LoRaWAN, atau koneksi ke Mitra — semua uji di jaringan
-  tertutup `192.168.4.0/24`.
-- TLS tidak digunakan pada Fase 2 (dashboard HTTP) → kredensial terlihat di Wireshark;
-  ini menjadi temuan Blue Team, bukan kelalaian tak tercatat.
-- Tidak ada OTA update bertanda tangan; replika berhenti pada "patch OS + patch aplikasi".
+1. Tidak ada timbangan, load cell, RFID, atau gateway fisik — telemetri dibangkitkan perangkat
+   lunak. Konsekuensinya: tidak ada skenario serangan ke perangkat lapangan, hanya ke backend.
+2. Tidak memakai TLS/HTTPS. Disengaja agar kredensial dan token terlihat di Wireshark (bahan
+   analisis Blue Team), bukan kelalaian yang tidak tercatat.
+3. Dataset kecil (satu device, beberapa ekor kambing) agar ringan pada 4 GB RAM.
+4. Semua uji hanya di `192.168.4.0/24`; tidak ada koneksi ke backend KABITA yang sesungguhnya.
+
+---
 
 ## 5. Kesepakatan tim
 

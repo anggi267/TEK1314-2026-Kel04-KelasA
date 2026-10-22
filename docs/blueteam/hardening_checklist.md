@@ -21,14 +21,22 @@
 
 | Kontrol | Status | Bukti |
 |---|---|---|
-| B-2 firewall `ufw` | **Sebagian** — ufw aktif: default deny incoming, allow 22, 80, 1883 dari `192.168.4.0/24`; bukti `nmap` before/after belum diambil | `docs/blueteam/evidence/hardening-fase1/{before,after}.txt` |
-| B-3 patch OS | **Sebagian** — `apt update/upgrade/full-upgrade` dijalankan; 15 paket tertahan *phased update*; kredensial default **sengaja belum** dihapus (sasaran RT-02) | idem |
+| B-2 firewall `ufw` | **Sebagian** — ufw aktif: default deny incoming, allow 22/80/1883 dari `192.168.4.0/24`; bukti `nmap` before/after belum diambil | `docs/blueteam/evidence/hardening-fase1/{before,after}.txt` |
+| B-3 patch OS | **Sebagian** — `apt update/upgrade/full-upgrade`; 15 paket tertahan *phased update*; akun default **sengaja belum** dihapus (sasaran RT-02) | idem |
 | B-1 minimalisasi service | **Sebagian** — `ModemManager` dinonaktifkan; service lain tidak terpasang; pemindaian port before/after menyusul | idem |
 | A-1…A-4, C-1…C-3 | Belum — ditunda ke Fase 2 agar sasaran RT-02/RT-03 tetap ada | `attack_plan.md` |
 
+> **Catatan perubahan stack (22 Okt 2026):** bukti di atas direkam saat replika masih memakai
+> **nginx + PHP-FPM + MariaDB + Mosquitto** (stack sementara sebelum produk KABITA diklarifikasi).
+> Replika final memakai **ThingsBoard CE + PostgreSQL** (`docs/design/replica_setup.md`), sehingga
+> port acuan berubah menjadi **8080** (UI/REST), **1883** (MQTT), **5432** (PostgreSQL lokal), dan
+> **22** (SSH). Konsekuensi yang harus dieksekusi ulang di awal Fase 2:
+> (a) baseline traffic baru pada ThingsBoard, (b) `nmap` before/after untuk B-1/B-2, dan
+> (c) verifikasi bahwa layanan `thingsboard` tetap 200 setelah `ufw` aktif.
+
 _Prasyarat terpenuhi: VM target **Ubuntu Server 26.04.1 LTS**, IP `192.168.4.5/24` aktif, `sshd`
-berjalan, sudo NOPASSWD untuk otomasi, stack replika terpasang (nginx/PHP-FPM/MariaDB/Mosquitto),
-dan baseline traffic sudah direkam — lihat `docs/reports/fase1/laporan-fase1.md`._
+berjalan, sudo NOPASSWD untuk otomasi. Replika ThingsBoard menyusul sesuai
+`docs/design/replica_setup.md`; baseline sementara sudah direkam di `docs/reports/fase1/`._
 
 ---
 
@@ -92,117 +100,105 @@ sudo systemctl enable --now fail2ban && sudo fail2ban-client status sshd
 ## B. Service & Attack Surface
 
 ### B-1 · Nonaktifkan service/port yang tidak dipakai
-Replika backend IoT hanya butuh 80 (dashboard/API), 3306 (lokal), 1883 (MQTT), 2222 (SSH).
-Service bawaan Ubuntu Server yang tidak dipakai dimatikan:
+Replika **KABITA** (ThingsBoard) hanya butuh 8080 (UI/REST), 1883 (MQTT transport), 5432
+(PostgreSQL, **lokal saja**), dan 22 (SSH). Service bawaan Ubuntu Server yang tidak dipakai
+dimatikan:
 ```bash
 sudo systemctl disable --now avahi-daemon cups cups-browsed rpcbind ModemManager 2>/dev/null
-sudo systemctl list-unit-files --state=enabled | grep -Ev "ssh|nginx|mariadb|mosquitto|systemd|networking|apparmor|cron|rsyslog|unattended"
+sudo systemctl list-unit-files --state=enabled | grep -Ev "ssh|thingsboard|postgresql|systemd|networking|apparmor|cron|rsyslog|unattended"
 nmap -sS -p- 192.168.4.5 -oN /tmp/after_port.txt     # dari Kali
 ```
 **Verifikasi:** jumlah port terbuka berkurang dibanding baseline; setiap port yang tersisa punya alasan.
 **Bukti:** `B1_before_nmap_full.txt`, `B1_after_nmap_full.txt`, `B1_port_delta.md`
 **Status:** `Belum` · **PIC:** Blue Team
 
-### B-2 · Firewall whitelist + tutup MySQL dari luar
+### B-2 · Firewall whitelist + tutup PostgreSQL dari luar
 ```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow 2222/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow from 192.168.4.100 to any port 1883 proto tcp
-sudo ufw allow from 192.168.4.200 to any port 514 proto udp
+sudo ufw allow from 192.168.4.0/24 to any port 8080 proto tcp     # dashboard/REST KABITA
+sudo ufw allow from 192.168.4.100 to any port 1883 proto tcp      # MQTT hanya gateway/attacker lab
+sudo ufw allow from 192.168.4.200 to any port 514 proto udp       # log ke sensor
 sudo ufw --force enable && sudo ufw status verbose
 
-# MySQL hanya lokal
-sudo sed -i 's/^bind-address.*/bind-address = 127.0.0.1/' /etc/mysql/mariadb.conf.d/50-server.cnf
-sudo systemctl restart mariadb
+# PostgreSQL hanya lokal (ThingsBoard memanggil lewat localhost)
+sudo sed -i "s/^#\?listen_addresses.*/listen_addresses = '127.0.0.1'/" /etc/postgresql/*/main/postgresql.conf
+sudo systemctl restart postgresql
 ```
-**Verifikasi:** dari Kali `nmap -sS -p1-1024 192.168.4.5` → hanya port whitelist `open`, sisanya
-`filtered`; `mysql -h 192.168.4.5 -u iotadmin -p` → timeout (bukan `Access denied`).
-**Bukti:** `B2_after_ufw_status.png`, `B2_before_nmap_vs_after_nmap.png`, `B2_after_mysql_localhost_only.txt`
+**Verifikasi:** dari Kali `nmap -sS -p1-1024 192.168.4.5` → hanya 8080/1883/22 `open`, 5432
+`filtered`; `psql -h 192.168.4.5 -U thingsboard` → timeout (bukan `password authentication failed`).
+**Bukti:** `B2_after_ufw_status.png`, `B2_before_nmap_vs_after_nmap.png`, `B2_after_postgres_localhost_only.txt`
 **Status:** `Belum` · **PIC:** Blue Team
 
 ### B-3 · Patch OS/paket + hapus kredensial default
 ```bash
-sudo apt update && sudo apt -y upgrade
+sudo apt update && sudo apt -y full-upgrade
 sudo apt install -y unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades
-sudo mysql_secure_installation      # hapus anonymous user, matikan remote root, hapus test DB
-sudo passwd iotadmin                # ganti password lemah iotadmin123
-mysql -u root -e "SELECT user,host FROM mysql.user;"   # harapan: tidak ada user tanpa password
+sudo passwd iotadmin                # ganti password lemah (SSH)
+# hapus akun demo ThingsBoard: login UI sebagai sysadmin -> ganti password, atau:
+curl -s -X POST http://127.0.0.1:8080/api/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"sysadmin@thingsboard.org","password":"sysadmin"}' | head -c 200
 apt list --upgradable                                  # harapan: kosong
 ```
-**Verifikasi:** `apt list --upgradable` kosong; `mysql -u root` tanpa sudo → ditolak;
+**Verifikasi:** `apt list --upgradable` kosong; login `tenant@thingsboard.org`/`tenant` → 401;
 `hydra -l iotadmin -P rockyou.txt ssh://192.168.4.5 -s 2222 -t 4` → 0 valid pair (setelah A-2/A-4).
-**Bukti:** `B3_before_apt_upgradable.txt`, `B3_after_apt_upgraded.txt`, `B3_after_mysql_secure.png`
+**Bukti:** `B3_before_apt_upgradable.txt`, `B3_after_apt_upgraded.txt`, `B3_after_default_admin_rejected.txt`
 **Status:** `Belum` · **PIC:** Blue Team
 
 ---
 
 ## C. Data & Application
 
-### C-1 · Kredensial tidak hardcoded (env var)
+### C-1 · Kredensial tidak hardcoded (env var / file konfigurasi ketat)
 ```bash
-sudo tee /var/www/iot-dashboard/.env >/dev/null <<'EOF'
-DB_HOST=127.0.0.1
-DB_NAME=iot_db
-DB_USER=pbl_app
-DB_PASS=<diisi-saat-eksekusi>
-MQTT_USER=iot_gateway
-MQTT_PASS=<diisi-saat-eksekusi>
-EOF
-sudo chmod 600 /var/www/iot-dashboard/.env
-sudo chown www-data:www-data /var/www/iot-dashboard/.env
-grep -rn "password\s*=" /var/www/iot-dashboard --include=*.php | grep -v ".env"   # harapan: kosong
+sudo chmod 600 /etc/thingsboard/conf/thingsboard.conf
+sudo chown thingsboard:thingsboard /etc/thingsboard/conf/thingsboard.conf
+sudo grep -E 'SPRING_DATASOURCE_(USERNAME|PASSWORD)' /etc/thingsboard/conf/thingsboard.conf | sed 's/=.*/=<REDACTED>/'
+grep -rnE '[A-Za-z0-9]{20,}' --include=*.md --include=*.sh . | grep -v '<TOKEN>' | head
 ```
-**Bukti:** `C1_before_hardcoded_creds.png`, `C1_after_env_chmod600.txt`, `C1_after_no_hardcoded.txt`
+**Verifikasi:** tidak ada password/token asli di repo (hasil grep bersih); file konfigurasi
+`600 thingsboard:thingsboard`; token device hanya ada di UI ThingsBoard dan `.env` lokal yang
+masuk `.gitignore`.
+**Bukti:** `C1_before_secret_in_repo.txt`, `C1_after_conf_chmod600.txt`, `C1_after_no_hardcoded.txt`
 **Status:** `Belum` · **PIC:** Red (review kode) + Blue (terapkan)
 
-### C-2 · Validasi input API + autentikasi/ACL MQTT
-```php
-// /var/www/iot-dashboard/api.php — sebelum: "SELECT * FROM sensor_readings WHERE id=$id"
-$stmt = $pdo->prepare('SELECT id, moisture, ts FROM sensor_readings WHERE id = :id');
-$stmt->bindValue(':id', filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT), PDO::PARAM_INT);
-$stmt->execute();
-```
+### C-2 · Rotasi device token + validasi telemetri + TLS MQTT
 ```bash
-# Mosquitto: matikan anonymous, wajib user + ACL topik
-sudo mosquitto_passwd -c /etc/mosquitto/passwd iot_gateway
-sudo tee /etc/mosquitto/conf.d/pbl.conf >/dev/null <<'EOF'
-listener 1883
-allow_anonymous false
-password_file /etc/mosquitto/passwd
-acl_file /etc/mosquitto/acl
-EOF
-sudo tee /etc/mosquitto/acl >/dev/null <<'EOF'
-user iot_gateway
-topic write sensor/+/data
-topic read aktuator/#
-EOF
-sudo systemctl restart mosquitto
+# 1. rotasi token tiap device (UI: Devices -> pilih device -> Manage credentials -> rotate)
+#    token lama otomatis ditolak; catat waktu rotasi di logbook
+# 2. rule chain "KABITA-Validate" (script node) menolak nilai di luar rentang wajar:
+#    berat_kg 5-120 kg, pakan_kg 0-10 kg, rfid harus terdaftar
+# 3. wajibkan TLS pada transport MQTT
+sudo sed -i 's/^#\?\s*export MQTT_SSL_ENABLED.*/export MQTT_SSL_ENABLED=true/' /etc/thingsboard/conf/thingsboard.conf
+sudo sed -i 's/^#\?\s*export MQTT_BIND_PORT.*/export MQTT_BIND_PORT=8883/' /etc/thingsboard/conf/thingsboard.conf
+sudo systemctl restart thingsboard
 ```
-**Verifikasi:** `sqlmap -u "http://192.168.4.5/iot-dashboard/api.php?id=1" --batch` → tidak injectable;
-`mosquitto_pub -h 192.168.4.5 -t aktuator/pompa -m x` tanpa kredensial → `Connection Refused: not authorized`.
-**Bukti:** `C2_before_sqlmap_vulnerable.txt`, `C2_after_sqlmap_protected.txt`, `C2_after_mqtt_acl_denied.txt`
+**Verifikasi:** `mosquitto_pub` dengan token lama → `Connection Refused: not authorized`;
+publish `{"berat_kg":99.9}` → ditolak rule chain (tidak muncul di telemetri);
+`curl /api/v1/<token-lama>/telemetry` → 401.
+**Bukti:** `C2_before_telemetry_injection.txt`, `C2_after_token_rotated_401.txt`,
+`C2_after_range_rejected.txt`, `C2_after_mqtt_tls_required.txt`
 **Status:** `Belum` · **PIC:** Red + Blue
 
 ### C-3 · Least-privilege user DB + logging
 ```bash
-mysql -u root <<'EOF'
-CREATE USER IF NOT EXISTS 'pbl_app'@'localhost' IDENTIFIED BY '<password-dari-.env>';
-GRANT SELECT, INSERT, UPDATE ON iot_db.sensor_readings TO 'pbl_app'@'localhost';
-GRANT SELECT ON iot_db.users TO 'pbl_app'@'localhost';
-FLUSH PRIVILEGES;
+sudo -u postgres psql <<'EOF'
+-- role ThingsBoard hanya berhak pada database miliknya, bukan superuser
+ALTER ROLE thingsboard NOSUPERUSER NOCREATEDB NOCREATEROLE;
+GRANT ALL PRIVILEGES ON DATABASE thingsboard TO thingsboard;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
 EOF
-mysql -u root -e "SHOW GRANTS FOR 'pbl_app'@'localhost';"
-# logging: aktifkan audit login & teruskan ke sensor
+sudo -u postgres psql -c "\du thingsboard"    # harapan: Attributes kosong (bukan superuser)
+# logging: teruskan auth.log + log ThingsBoard ke sensor
 sudo apt install -y rsyslog
 echo '*.* @@192.168.4.200:514' | sudo tee /etc/rsyslog.d/50-remote.conf
 sudo systemctl restart rsyslog
 sudo grep -c "Failed password" /var/log/auth.log
 ```
-**Verifikasi:** grant hanya SELECT/INSERT/UPDATE pada 2 tabel (tanpa DROP/GRANT); `auth.log`
+**Verifikasi:** `thingsboard` bukan superuser dan tidak punya akses ke database lain; `auth.log`
 menampilkan percobaan login Red Team dan log yang sama muncul di Security Onion.
-**Bukti:** `C3_after_show_grants.txt`, `C3_after_authlog_failed_logins.txt`, `C3_after_logs_in_onion.png`
+**Bukti:** `C3_after_pg_roles.txt`, `C3_after_authlog_failed_logins.txt`, `C3_after_logs_in_onion.png`
 **Status:** `Belum` · **PIC:** Blue Team
 
 ---
@@ -211,10 +207,10 @@ menampilkan percobaan login Red Team dan log yang sama muncul di Security Onion.
 
 | Skenario normal | Perintah | Metrik baseline |
 |---|---|---|
-| Ping periodik sensor→server | `ping -i 5 192.168.4.5` (15 menit) | RTT rata-rata, jitter, jumlah paket |
-| Buka dashboard & login | 10× `curl -s -o /dev/null -w "%{http_code} %{time_total}\n" http://192.168.4.5/iot-dashboard/login.php` | request/menit, ukuran respons |
-| Query data sensor | 1× `curl ".../api.php?id=1"` tiap 10 detik selama 10 menit | request/menit, payload |
-| Publish MQTT normal | `mosquitto_pub -t sensor/soil/data -m '{"moisture":42}'` tiap 30 s | pesan/menit per topik |
+| Ping periodik gateway→server | `ping -i 5 192.168.4.5` (15 menit) | RTT rata-rata, jitter, jumlah paket |
+| Buka dashboard KABITA & login tenant | 10× `curl -s -o /dev/null -w "%{http_code} %{time_total}\n" http://192.168.4.5:8080/login` | request/menit, ukuran respons |
+| Ambil telemetri via REST | `curl /api/v1/<token>/telemetry` tiap 10 detik selama 10 menit | request/menit, payload |
+| Publish telemetri normal (MQTT) | `mosquitto_pub -t v1/devices/me/telemetry -m '{"berat_kg":32.4,"pakan_kg":1.8}'` tiap 30 s | pesan/menit per device |
 | Sinkronisasi waktu | `timedatectl` / NTP | 1 sesi/hari, port 123/udp |
 
 **Artefak:** `baseline_minggu9.pcap` di sensor, ekspor Zeek `conn.log`/`http.log`, dan ringkasan
@@ -234,7 +230,8 @@ menampilkan percobaan login Red Team dan log yang sama muncul di Security Onion.
 ## F. Catatan jujur untuk presentasi
 
 1. Seluruh kontrol di atas **belum dieksekusi**. OS target sudah memenuhi prasyarat
-   (Ubuntu 26.04.1 LTS), tetapi IP statis lab dan stack replika belum dipasang.
+   (Ubuntu 26.04.1 LTS) dan IP statis lab aktif; **ThingsBoard belum terpasang** — instalasi
+   mengikuti `docs/design/replica_setup.md` dan menjadi langkah pertama Fase 2.
 2. Bila waktu sempit, prioritas: **B-3, A-2, B-1, B-2, C-2** (mencakup 3 kategori, dampak
    terbesar, dan langsung menutup kelemahan yang dipakai RT-02/RT-03/RT-04).
 3. Untuk target Ubuntu, `ufw`/`fail2ban`/`sysctl` tersedia normal — tidak perlu jalur cadangan

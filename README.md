@@ -6,8 +6,8 @@ Mata kuliah Keamanan Siber (TEK1314) · D4 Teknologi Rekayasa Komputer · Kelas 
 ## Skenario
 
 Kelompok 4 berperan sebagai **SOC (Security Operations Center)** yang mengamankan *backend*
-sebuah sistem IoT: server data, API gateway, dan dashboard monitoring — bukan perangkat
-sensor fisiknya. Red Team mensimulasikan aktor ancaman eksternal (pencurian data operasional,
+produk **KABITA** — sistem pencatatan **berat badan & pakan kambing**: Ubuntu Server +
+**ThingsBoard** + PostgreSQL, bukan timbangan fisiknya. Red Team mensimulasikan aktor ancaman eksternal (pencurian data operasional,
 gangguan ketersediaan, pemalsuan perintah aktuator) di dalam **jaringan lab tertutup**;
 Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 
@@ -62,12 +62,16 @@ Blue Team mendeteksi, menganalisis, dan merespons mengikuti NIST SP 800-61r2.
 
 - **Dokumen & rencana:** lengkap (tech stack, 10 kontrol hardening, 5 skenario serangan,
   template purple team log, logbook).
-- **Perubahan Minggu 9–10:** target diganti dari Metasploitable2 ke **Ubuntu Server**, dan
-  **Ubuntu Server 26.04.1 LTS sudah terpasang** (autoinstall, hostname `target-iot`, user
-  `iotadmin`). Sisa: IP statis `192.168.4.5` + stack replika — lihat `docs/design/vm_config.md`.
-- **Eksekusi:** hardening dan serangan **belum dijalankan** — VM lab belum dinyalakan ulang
-  setelah UTS. Perintah dan skema bukti sudah disiapkan agar eksekusi Minggu 10 tinggal
-  dijalankan dan di-screenshot. Status `Selesai` pada checklist hanya boleh diisi bila file
+- **Perubahan Minggu 9–10:** target diganti dari Metasploitable2 ke **Ubuntu Server 26.04.1 LTS**
+  (terpasang via autoinstall, hostname `target-iot`, IP `192.168.4.5`, user `iotadmin`).
+- **Klarifikasi produk (22 Okt):** produk asli = **KABITA** (berat badan & pakan kambing) dengan
+  backend **ThingsBoard + PostgreSQL**. Replika final mengikuti stack itu; detail peta komponen di
+  `docs/presentation-minggu9/tech_stack_declaration.md` dan langkah instalasi di
+  `docs/design/replica_setup.md`.
+- **Eksekusi Fase 1 (21 Okt):** baseline terekam (440 paket/41,3 s) dan hardening awal
+  (`ufw`, `fail2ban`, patch) terbukti tidak memutus layanan — pada stack **sementara**
+  (nginx/PHP/MariaDB/Mosquitto). Setelah ThingsBoard terpasang, baseline dan bukti `nmap`
+  harus direkam ulang pada stack final. Status `Selesai` pada checklist hanya boleh diisi bila file
   bukti sudah ada di `docs/blueteam/evidence/`.
 
 ## Kesesuaian dengan struktur wajib (Panduan Minggu 9, Bagian XI)

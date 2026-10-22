@@ -12,6 +12,15 @@
 | Red Team | Raka Syauqi Ferdian | J0404241112 |
 | Red Team | Zidan | (lihat lampiran) |
 
+> **Catatan revisi (22 Oktober 2026).** Laporan ini merekam apa yang benar-benar dijalankan pada
+> 20–21 Oktober, saat replika masih memakai stack sementara (nginx + PHP-FPM + MariaDB +
+> Mosquitto). Setelah produk asli diklarifikasi sebagai **KABITA** (pencatatan berat badan &
+> pakan kambing) dengan backend **ThingsBoard CE + PostgreSQL**, replika final mengikuti stack
+> tersebut — lihat `docs/presentation-minggu9/tech_stack_declaration.md` dan
+> `docs/design/replica_setup.md`. Konsekuensinya: angka baseline dan bukti port di laporan ini
+> berlaku untuk stack sementara, dan wajib direkam ulang pada ThingsBoard (port 8080/1883/5432)
+> di awal Fase 2. Bagian yang tidak berubah: penyediaan VM, pengalamatan, ping, dan metode kerja.
+
 ---
 
 ## Ringkasan Eksekutif

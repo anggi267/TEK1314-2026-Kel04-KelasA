@@ -103,33 +103,33 @@
 <section class="slide">
   <div class="kicker">01 · Konteks Proyek IoT</div>
   <h2>Apa yang kami lindungi</h2>
-  <p class="sub">Backend sistem otomasi &amp; monitoring budidaya — bukan perangkat sensor fisiknya.</p>
+  <p class="sub">KABITA — pencatatan berat badan &amp; pakan kambing. Yang dijaga: backend-nya, bukan timbangannya.</p>
 
   <div class="grid2" style="margin-top:18px">
     <div class="card">
-      <h3>Produk IoT (asli)</h3>
+      <h3>Produk IoT: KABITA</h3>
       <ul>
-        <li>Sensor kelembapan tanah &amp; aktuator pompa di lapangan</li>
-        <li><strong>Backend:</strong> server data, API gateway, dashboard monitoring</li>
-        <li>Data operasional: jadwal irigasi, riwayat sensor, kredensial operator</li>
+        <li>Timbangan badan &amp; pakan kambing (load cell, RFID ear tag)</li>
+        <li><strong>Backend:</strong> Ubuntu Server + <strong>ThingsBoard</strong> + PostgreSQL</li>
+        <li>Data operasional: berat (kg) &amp; pakan (kg) per ekor per hari</li>
       </ul>
       <p style="margin-top:8px;color:#7F8C9B;font-size:11.5px">
-        ⚠ Detail produk menyesuaikan produk final kelompok (lihat tech_stack_declaration.md).
+        Detail pemetaan: tech_stack_declaration.md
       </p>
     </div>
     <div class="card">
       <h3>Aset yang dijaga SOC</h3>
       <table>
         <tr><td><strong>Kerahasiaan</strong></td><td>data sensor &amp; akun operator</td></tr>
-        <tr><td><strong>Integritas</strong></td><td>perintah aktuator tidak dapat dipalsukan</td></tr>
+        <tr><td><strong>Integritas</strong></td><td>berat &amp; pakan tidak dapat dipalsukan</td></tr>
         <tr><td><strong>Ketersediaan</strong></td><td>dashboard &amp; API tetap melayani</td></tr>
       </table>
     </div>
   </div>
 
   <div class="grid3" style="margin-top:16px">
-    <div class="card"><h3 style="color:#FF8FA3">Pencurian data</h3><p>Dump database sensor dan kredensial lewat celah web/API.</p></div>
-    <div class="card"><h3 style="color:#FFC98D">Pemalsuan perintah</h3><p>Publish MQTT palsu ke topik aktuator tanpa autentikasi.</p></div>
+    <div class="card"><h3 style="color:#FF8FA3">Pencurian data</h3><p>Ambil alih akun ThingsBoard / token device → data peternakan terbaca.</p></div>
+    <div class="card"><h3 style="color:#FFC98D">Pemalsuan telemetri</h3><p>Publish MQTT/REST dengan token curian → berat &amp; pakan palsu.</p></div>
     <div class="card"><h3 style="color:#8DC0FF">Gangguan layanan</h3><p>SYN flood pada dashboard → operasi lapangan buta.</p></div>
   </div>
 
@@ -148,10 +148,10 @@
       <th style="width:15%">Port</th>
     </tr>
     <tr><td><strong>OS server</strong></td><td>Ubuntu Server LTS 26.04</td><td>Ubuntu Server LTS 26.04 (1:1)</td><td class="mono">—</td></tr>
-    <tr><td><strong>Dashboard</strong></td><td>Web app + Nginx</td><td>Nginx + PHP-FPM + DVWA</td><td class="mono">80</td></tr>
-    <tr><td><strong>API gateway</strong></td><td>REST <span class="mono">/api/sensor</span>, <span class="mono">/api/aktuator</span></td><td><span class="mono">api.php</span> (query <span class="mono">?id=</span>)</td><td class="mono">80</td></tr>
-    <tr><td><strong>Database</strong></td><td>MySQL 8 / MariaDB</td><td>MariaDB <span class="mono">iot_db</span> · bind 0.0.0.0</td><td class="mono">3306</td></tr>
-    <tr><td><strong>Protokol sensor</strong></td><td>MQTT 3.1.1 (Mosquitto)</td><td>Mosquitto · <span class="mono">allow_anonymous true</span></td><td class="mono">1883</td></tr>
+    <tr><td><strong>Platform IoT</strong></td><td><strong>ThingsBoard CE</strong> (UI + REST)</td><td>ThingsBoard CE · akun default dibiarkan</td><td class="mono">8080</td></tr>
+    <tr><td><strong>API telemetri</strong></td><td>REST <span class="mono">/api/v1/&lt;token&gt;/telemetry</span></td><td>sama · token statis tanpa rotasi</td><td class="mono">8080</td></tr>
+    <tr><td><strong>Database</strong></td><td>PostgreSQL 16</td><td>PostgreSQL 16 · <span class="mono">thingsboard</span></td><td class="mono">5432</td></tr>
+    <tr><td><strong>Protokol perangkat</strong></td><td>MQTT transport ThingsBoard</td><td>sama · tanpa TLS, token = username</td><td class="mono">1883</td></tr>
     <tr><td><strong>Manajemen jarak jauh</strong></td><td>SSH key-based, non-root</td><td>OpenSSH · password auth aktif · user <span class="mono">iotadmin</span></td><td class="mono">22</td></tr>
   </table>
 
@@ -159,7 +159,7 @@
     <div class="card" style="border-color:rgba(0,229,160,.3)">
       <h3>Mengapa Ubuntu Server</h3>
       <ul>
-        <li>Replika benar-benar menyerupai backend IoT (nginx, MariaDB, Mosquitto)</li>
+        <li>Replika memakai ThingsBoard yang sama dengan produk KABITA (bukan tiruan)</li>
         <li><span class="mono">ufw</span>, <span class="mono">fail2ban</span>, <span class="mono">apt</span> berfungsi → hardening dapat dibuktikan</li>
         <li>Kelemahan dipasang sengaja &amp; terdaftar, bukan kebetulan</li>
       </ul>
@@ -169,7 +169,7 @@
       <ul>
         <li>Tanpa sensor fisik / LoRaWAN / koneksi Mitra</li>
         <li>Tanpa TLS di Fase 2 — justru jadi bahan analisis Blue Team</li>
-        <li>MQTT baru ada di Fase 2 → skenario RT-04 berstatus kondisional</li>
+        <li>Tanpa timbangan/RFID fisik → telemetri dibangkitkan skrip</li>
       </ul>
     </div>
   </div>
@@ -200,7 +200,7 @@
       <div class="chip blue">Target Node</div>
       <p style="margin-top:8px;font-size:15px;color:#E6EDF3"><strong>Ubuntu Server 26.04</strong></p>
       <p class="mono" style="font-size:15px;color:#8DC0FF">192.168.4.5</p>
-      <p style="margin-top:6px;font-size:11.5px">nginx · MariaDB · MQTT · SSH</p>
+      <p style="margin-top:6px;font-size:11.5px">ThingsBoard :8080 · MQTT :1883 · PostgreSQL · SSH</p>
     </div>
 
     <div class="card" style="flex:1;text-align:center;border-color:rgba(0,229,160,.35)">
@@ -272,15 +272,16 @@
         <h3>Baseline Fase 1 (sudah ditetapkan)</h3>
         <ul>
           <li>Ping sensor→server 15 menit (RTT, jitter)</li>
-          <li>10× akses dashboard, 1 query API / 10 s</li>
+          <li>10× akses dashboard :8080, 1 kirim telemetri / 10 s</li>
           <li>Sinkronisasi NTP harian</li>
           <li>Artefak: <span class="mono">baseline_minggu9.pcap</span> + Zeek <span class="mono">conn.log</span></li>
         </ul>
       </div>
       <div class="card" style="margin-top:12px;border-color:rgba(255,201,141,.35)">
-        <p><strong style="color:#FFC98D">Kenapa belum ada angka "selesai":</strong>
-        VM target belum dijalankan ulang setelah UTS, jadi kami tidak mau mengklaim bukti yang
-        belum ada. Prioritas eksekusi Minggu 10: A-2, B-1, B-2, B-3, C-1.</p>
+        <p><strong style="color:#FFC98D">Status per 22 Okt (nyata, bukan rencana):</strong>
+        target hidup, baseline terekam 440 paket/41,3 s, <span class="mono">ufw</span> +
+        <span class="mono">fail2ban</span> aktif, dashboard tetap HTTP 200. Sisa: pasang
+        ThingsBoard (stack final KABITA) lalu 7 kontrol A/C.</p>
       </div>
     </div>
   </div>
@@ -354,26 +355,26 @@
     </tr>
     <tr>
       <td class="mono">RT-02</td><td>Exploitation</td>
-      <td>Brute-force kredensial lemah → shell + sudo · <span class="mono">Hydra</span>, Metasploit</td>
-      <td class="mono">:22 user iotadmin (→ :2222)</td>
-      <td>auth.log Failed→Accepted, Zeek</td>
+      <td>Akun default ThingsBoard + brute-force SSH · <span class="mono">Burp</span>, <span class="mono">Hydra</span></td>
+      <td class="mono">:8080 tenant@… · :22 iotadmin</td>
+      <td>auth.log, log auth ThingsBoard</td>
     </tr>
     <tr>
       <td class="mono">RT-03</td><td>Web / API</td>
-      <td>SQL injection pada endpoint data sensor · <span class="mono">sqlmap</span>, Burp</td>
-      <td class="mono">http://192.168.4.5/iot-dashboard/</td>
-      <td>ET WEB_SERVER SQLi, Zeek http.log</td>
+      <td>Curi token device → injeksi telemetri palsu · <span class="mono">Burp</span>, <span class="mono">curl</span></td>
+      <td class="mono">:8080 /api/v1/&lt;token&gt;/telemetry</td>
+      <td>Rule POST /api/v1/*, anomali nilai</td>
     </tr>
     <tr>
       <td class="mono">RT-04</td><td>Protokol IoT</td>
-      <td>MQTT spoof publish ke topik aktuator · <span class="mono">mosquitto_pub</span>, MQTT Explorer</td>
-      <td class="mono">:1883 broker tanpa auth <span class="chip grn">kondisional</span></td>
+      <td>MQTT spoof dengan token device · <span class="mono">mosquitto_pub</span>, MQTT Explorer</td>
+      <td class="mono">:1883 v1/devices/me/telemetry</td>
       <td>Rule kustom (belum ada bawaan)</td>
     </tr>
     <tr>
       <td class="mono">RT-05</td><td>Availability <span class="chip">maks. 1</span></td>
       <td>SYN flood 60 detik · <span class="mono">hping3</span></td>
-      <td class="mono">:80 dashboard</td>
+      <td class="mono">:8080 dashboard ThingsBoard</td>
       <td>ET DOS, Zeek conn.log (S0)</td>
     </tr>
   </table>
