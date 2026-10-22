@@ -8,7 +8,8 @@
 | `BUKTI_login.png` | halaman login operator |
 
 Screenshot diambil dari host lewat SSH tunnel + Chrome headless:
-`python scripts/docs/screenshot_dashboard.py` (Ubuntu Server tidak punya browser).
+`python scripts/docs/screenshot_dashboard.py` (skrip ada di `PBL-pendukung/scripts/docs/`;
+Ubuntu Server tidak punya browser).
 
 ## Aturan
 

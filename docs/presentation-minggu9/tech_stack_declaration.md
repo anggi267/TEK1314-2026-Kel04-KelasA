@@ -44,7 +44,7 @@
 
 | Kriteria | Bobot | Yang mendukung |
 |---|---|---|
-| Ketepatan tech stack & replikasi | 20% | tabel bagian 1, `docs/design/replica_setup.md` |
+| Ketepatan tech stack & replikasi | 20% | tabel bagian 1, `PBL-pendukung/docs/design/replica_setup.md` |
 | Progres hardening nyata | 30% | `docs/blueteam/hardening_checklist.md` + `evidence/` |
 | Konsistensi arsitektur Minggu 4 | 20% | subnet & IP tidak berubah (`docs/design/ip_plan.md`) |
 | Eksekusi & analisis siklus | 30% | `docs/redteam/attack_plan.md`, `docs/purple-team-log.md` |

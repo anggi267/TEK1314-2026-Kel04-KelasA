@@ -74,7 +74,7 @@ Bukti before/after: `docs/blueteam/evidence/hardening/`.
 
 ### C-2 Query parameterized & validasi input
 - **Kondisi sekarang:** dua endpoint merangkai SQL dari input (`/api/telemetri`, `/api/login`) —
-  sudah dibuktikan bisa ditembus (lihat `replica_setup.md`).
+  sudah dibuktikan bisa ditembus (detail: `PBL-pendukung/docs/design/replica_setup.md`).
 - **Perbaikan (Fase 2):** prepared statement + validasi tipe/rentang.
 - **Status:** Belum (sengaja, sasaran RT-03).
 
