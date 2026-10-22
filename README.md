@@ -73,12 +73,14 @@ Security Onion pada Minggu 2.
 ## Materi pendukung (di luar repositori)
 
 Kode aplikasi, skrip build, laporan Fase 1, dan panduan perintah per VM tidak termasuk struktur
-yang diminta panduan, jadi disimpan di folder sebelah:
+yang diminta panduan, jadi disimpan di folder sebelah. **Mulai dari sini kalau kamu anggota tim
+yang baru bergabung:** `PBL-pendukung/docs/DOKUMENTASI-KONFIGURASI-VM.md` (docx + pdf juga ada).
 
 ```
 D:\materi kuliah\Keamanan Siber\PBL-pendukung\
   app\kabita\                    kode replika KABITA (Nuxt 4 + PostgreSQL)
   scripts\                       deploy_kabita.py, screenshot_dashboard.py, build dokumen
+  docs\DOKUMENTASI-KONFIGURASI-VM.md   semua konfigurasi VM + command (docx + pdf)
   docs\checkpoint-pertemuan9.md   panduan perintah per VM (docx + pdf juga)
   docs\reports\fase1\            laporan Fase 1 (.md/.docx/.pdf)
   docs\design\                   replica_setup.md, vm_config.md, diagram alternatif
