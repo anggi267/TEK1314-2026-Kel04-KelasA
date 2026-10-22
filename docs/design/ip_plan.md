@@ -26,6 +26,16 @@ sudo nmcli con add type ethernet ifname eth0 con-name pbl-lab ip4 192.168.4.100/
 sudo nmcli con up pbl-lab
 ```
 
+**Kali (ulangi setelah reboot)** — profil `pbl-lab` dibuat sekali dan tersimpan, tetapi harus
+diaktifkan kalau IP hilang:
+
+```bash
+sudo nmcli con up pbl-lab          # profil sudah ada
+# kalau belum ada:
+sudo nmcli con add type ethernet ifname eth0 con-name pbl-lab ipv4.method manual \
+  ipv4.addresses 192.168.4.100/24
+```
+
 **Target** — netplan statis, permanen:
 
 ```yaml
