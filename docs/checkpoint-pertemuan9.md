@@ -235,11 +235,53 @@ git push origin main
 
 ---
 
+## Screenshot dashboard tanpa GUI
+
+Ubuntu Server tidak memasang desktop, jadi **jangan** mencari Firefox/Chrome di VM Target.
+Ada tiga cara yang benar:
+
+### Cara 1 — skrip otomatis (paling cepat, dari Windows)
+
+```bash
+# [HOST] sekali saja
+pip install paramiko websocket-client
+
+# [HOST] setiap kali butuh bukti baru
+python scripts/docs/screenshot_dashboard.py
+```
+
+Skrip membuka SSH tunnel `127.0.0.1:8090 -> 127.0.0.1:80`, menjalankan Chrome headless,
+menyimpan `BUKTI_login.png` dan `BUKTI_dashboard.png` ke `docs/blueteam/evidence/`.
+Firewall tidak diubah: traffic masuk lewat SSH, bukan lewat NAT.
+
+### Cara 2 — SSH tunnel manual + browser Windows
+
+```bash
+# [HOST] terminal 1
+ssh -p 2222 -L 8090:127.0.0.1:80 iotadmin@127.0.0.1     # password: 123
+
+# [HOST] lalu buka di browser Windows
+#   http://127.0.0.1:8090        login admin / admin123
+#   tekan Win+Shift+S untuk menangkap layar, simpan ke docs/blueteam/evidence/
+```
+
+Port 8080 lewat NAT **tidak bisa** dipakai: ufw hanya mengizinkan port 80 dari
+`192.168.4.0/24`, sehingga request dari host (10.0.3.x) diblokir.
+
+### Cara 3 — dari Attacker Node (paling "seperti penyerang melihat")
+
+```bash
+# [KALI] desktop Kali punya Firefox
+firefox http://192.168.4.5        # login admin / admin123, lalu tangkap layar
+```
+
+Gunakan cara 3 kalau dosen meminta bukti tampilan dari sudut pandang penyerang.
+
 ## Yang harus kamu kerjakan sendiri (tidak bisa diotomasi)
 
 | # | Tugas | Cara |
 |---|---|---|
-| 1 | **Screenshot dashboard** untuk bukti | Buka Firefox/Chrome di VM Target: `http://127.0.0.1/`, login `admin` / `admin123`, tangkap layar, simpan `docs/blueteam/evidence/BUKTI_dashboard.png` |
+| 1 | **Screenshot dashboard** untuk bukti | Ubuntu Server tidak punya browser. Pakai salah satu cara di bagian **Screenshot dashboard tanpa GUI** di bawah. Hasil: `docs/blueteam/evidence/BUKTI_dashboard.png` (sudah tersedia) |
 | 2 | **Screenshot sensor Onion** | Jalankan `tcpdump` di Onion sambil ping dari Kali, tangkap terminalnya → `docs/blueteam/evidence/BUKTI_sensor.png` |
 | 3 | **Push ke GitHub** | Butuh Personal Access Token: GitHub → Settings → Developer settings → Tokens (classic) → Generate, scope `repo`. Lalu `git push` saat diminta user = `rakasyau`, password = token |
 | 4 | **Unggah slide sebelum sesi** | `docs/presentation-minggu9/slides.pdf` harus sudah ada di GitHub sebelum kelas mulai |
