@@ -75,6 +75,7 @@ Security Onion pada Minggu 2.
 Kode aplikasi, skrip build, laporan Fase 1, dan panduan perintah per VM tidak termasuk struktur
 yang diminta panduan, jadi disimpan di folder sebelah. **Mulai dari sini kalau kamu anggota tim
 yang baru bergabung:** `PBL-pendukung/docs/DOKUMENTASI-KONFIGURASI-VM.md` (docx + pdf juga ada).
+Isinya hanya perintah yang dijalankan **di dalam VM** (target, Kali, Onion) — tanpa perintah host.
 
 ```
 D:\materi kuliah\Keamanan Siber\PBL-pendukung\
