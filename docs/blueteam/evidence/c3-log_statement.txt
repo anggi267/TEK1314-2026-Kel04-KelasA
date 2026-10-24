@@ -1,0 +1,4 @@
+ log_statement
+---------------
+ mod
+(1 row)

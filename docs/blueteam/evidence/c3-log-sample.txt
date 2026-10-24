@@ -1,0 +1,20 @@
+2026-10-23 11:55:44.883 UTC [1246] LOG:  database system is ready to accept connections
+2026-10-23 11:55:45.445 UTC [1295] [unknown]@[unknown] LOG:  connection received: host=[local]
+2026-10-23 11:55:45.973 UTC [1298] [unknown]@[unknown] LOG:  connection received: host=[local]
+2026-10-23 11:55:45.976 UTC [1298] postgres@template1 LOG:  connection authenticated: identity="postgres" method=peer (/etc/postgresql/18/main/pg_hba.conf:118)
+2026-10-23 11:55:45.976 UTC [1298] postgres@template1 LOG:  connection authorized: user=postgres database=template1 application_name=psql
+2026-10-23 11:55:48.657 UTC [1301] [unknown]@[unknown] LOG:  connection received: host=[local]
+2026-10-23 11:55:48.660 UTC [1301] postgres@template1 LOG:  connection authenticated: identity="postgres" method=peer (/etc/postgresql/18/main/pg_hba.conf:118)
+2026-10-23 11:55:48.660 UTC [1301] postgres@template1 LOG:  connection authorized: user=postgres database=template1 application_name=psql
+2026-10-23 11:55:49.185 UTC [1304] [unknown]@[unknown] LOG:  connection received: host=[local]
+2026-10-23 11:55:49.186 UTC [1304] postgres@template1 LOG:  connection authenticated: identity="postgres" method=peer (/etc/postgresql/18/main/pg_hba.conf:118)
+2026-10-23 11:55:49.186 UTC [1304] postgres@template1 LOG:  connection authorized: user=postgres database=template1 application_name=psql
+2026-10-23 11:55:49.313 UTC [1312] [unknown]@[unknown] LOG:  connection received: host=127.0.0.1 port=42274
+2026-10-23 11:55:49.324 UTC [1312] kabita_app@kabita_db LOG:  connection authenticated: identity="kabita_app" method=scram-sha-256 (/etc/postgresql/18/main/pg_hba.conf:125)
+2026-10-23 11:55:49.324 UTC [1312] kabita_app@kabita_db LOG:  connection authorized: user=kabita_app database=kabita_db
+2026-10-23 12:46:41.038 UTC [2743] [unknown]@[unknown] LOG:  connection received: host=[local]
+2026-10-23 12:46:41.039 UTC [2743] postgres@postgres LOG:  connection authenticated: identity="postgres" method=peer (/etc/postgresql/18/main/pg_hba.conf:118)
+2026-10-23 12:46:41.039 UTC [2743] postgres@postgres LOG:  connection authorized: user=postgres database=postgres application_name=psql
+2026-10-23 12:47:21.286 UTC [2759] [unknown]@[unknown] LOG:  connection received: host=[local]
+2026-10-23 12:47:21.287 UTC [2759] postgres@postgres LOG:  connection authenticated: identity="postgres" method=peer (/etc/postgresql/18/main/pg_hba.conf:118)
+2026-10-23 12:47:21.287 UTC [2759] postgres@postgres LOG:  connection authorized: user=postgres database=postgres application_name=psql

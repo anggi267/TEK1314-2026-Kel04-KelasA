@@ -1,0 +1,9 @@
+#PermitRootLogin prohibit-password
+#PubkeyAuthentication yes
+#PasswordAuthentication yes
+# PasswordAuthentication.  Depending on your PAM configuration,
+# the setting of "PermitRootLogin prohibit-password".
+# PAM authentication, then enable this but set PasswordAuthentication
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes

@@ -1,0 +1,96 @@
+BUKTI A.2 — fail2ban memblokir IP Attacker Node setelah percobaan login berulang
+Attacker : Kali Linux, 192.168.4.100 (Internal Network pbl-kel4)
+Target   : Ubuntu 26.04 LTS, hostname kabita, 192.168.4.5, SSH port 2222
+Waktu    : 2026-10-23 17:17:41–17:18 UTC
+========================================================================
+
+1) Konfigurasi jail (aktual di Target Node)
+$ grep -rE '^port|^maxretry|^bantime|^findtime' /etc/fail2ban/jail.local
+/etc/fail2ban/jail.local:port = 2222
+/etc/fail2ban/jail.local:maxretry = 5
+/etc/fail2ban/jail.local:findtime = 600
+/etc/fail2ban/jail.local:bantime = 600
+
+2) Simulasi percobaan login berulang DARI ATTACKER (6 percobaan, username acak)
+=== 6. simulasi brute-force password dari attacker (6 percobaan, username acak) ===
+  [1] 17:17:41 attacker1@192.168.4.5: Permission denied (publickey).
+  [2] 17:17:41 attacker2@192.168.4.5: Permission denied (publickey).
+  [3] 17:17:41 attacker3@192.168.4.5: Permission denied (publickey).
+  [4] 17:17:41 attacker4@192.168.4.5: Permission denied (publickey).
+  [5] 17:17:41 attacker5@192.168.4.5: Permission denied (publickey).
+  [6] 17:17:41 attacker6@192.168.4.5: Permission denied (publickey).
+
+3) Status jail setelah percobaan (di Target Node)
+$ sudo fail2ban-client status sshd
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed: 1
+|  |- Total failed:     6
+|  `- Journal matches:  _SYSTEMD_UNIT=ssh.service + _COMM=sshd
+`- Actions
+   |- Currently banned: 1
+   |- Total banned:     1
+   `- Banned IP list:   192.168.4.100
+
+4) Aturan firewall yang dipasang fail2ban (nftables)
+$ sudo nft list ruleset | grep -A6 f2b
+table inet f2b-table {
+        set addr-set-sshd {
+                type ipv4_addr
+                elements = { 192.168.4.100 }
+        }
+
+        chain f2b-chain {
+                type filter hook input priority filter - 1; policy accept;
+                tcp dport 2222 ip saddr @addr-set-sshd reject with icmp port-unreachable
+        }
+}
+
+5) Log fail2ban (Target Node)
+$ tail /var/log/fail2ban.log
+2026-10-23 17:17:41,629 fail2ban.filter  [1046]: INFO    [sshd] Found 192.168.4.100 - 2026-10-23 17:17:41
+2026-10-23 17:17:41,630 fail2ban.filter  [1046]: INFO    [sshd] Found 192.168.4.100 - 2026-10-23 17:17:41
+2026-10-23 17:17:41,805 fail2ban.filter  [1046]: INFO    [sshd] Found 192.168.4.100 - 2026-10-23 17:17:41
+2026-10-23 17:17:42,164 fail2ban.actions [1046]: NOTICE  [sshd] Ban 192.168.4.100
+
+6) Log sshd di Target Node (sumber deteksi)
+$ sudo grep 192.168.4.100 /var/log/auth.log | tail
+2026-10-23T17:17:41.522656+00:00 kabita sshd-session[3832]: Connection closed by invalid user attacker4 192.168.4.100 port 49936 [preauth]
+2026-10-23T17:17:41.642973+00:00 kabita sshd-session[3834]: Invalid user attacker5 from 192.168.4.100 port 49948
+2026-10-23T17:17:41.651069+00:00 kabita sshd-session[3834]: Connection closed by invalid user attacker5 192.168.4.100 port 49948 [preauth]
+2026-10-23T17:17:41.754073+00:00 kabita sshd-session[3837]: Invalid user attacker6 from 192.168.4.100 port 49952
+2026-10-23T17:17:41.760029+00:00 kabita sshd-session[3837]: Connection closed by invalid user attacker6 192.168.4.100 port 49952 [preauth]
+
+7) Efek blokir terlihat DARI ATTACKER NODE
+=== 8. setelah IP 192.168.4.100 diblokir fail2ban ===
+  curl http://192.168.4.5/               -> 200   (port 80 tidak termasuk aturan ban)
+  curl http://192.168.4.5/api/v1/kambing -> 200
+ssh: connect to host 192.168.4.5 port 2222: Connection refused
+$ nmap -Pn -p 80,2222 192.168.4.5
+PORT     STATE    SERVICE
+80/tcp   open     http
+2222/tcp filtered EtherNetIP-1
+
+8) Pemulihan setelah IP di-unban (bantime 600 s; di-unban manual agar lab bisa dipakai lagi)
+$ sudo fail2ban-client set sshd unbanip 192.168.4.100
+1
+$ sudo fail2ban-client status sshd | tail -3
+   |- Currently banned: 0
+   |- Total banned:     1
+   `- Banned IP list:
+
+=== 9. setelah IP attacker di-unban (pemulihan, diuji dari Kali) ===
+iotadmin@192.168.4.5: Permission denied (publickey).
+  ("Permission denied (publickey)" = koneksi pulih, autentikasi tetap ditolak)
+  curl http://192.168.4.5/ -> 200
+
+========================================================================
+CATATAN ANALISIS (penting untuk laporan, jangan dihapus)
+- Ban bekerja pada layer firewall (nftables, set addr-set-sshd) dan menolak dengan
+  `icmp port-unreachable`, sehingga dari attacker terlihat "Connection refused".
+- Aturan ban hanya menyasar `tcp dport 2222` (port SSH), jadi port 80 tetap terbuka.
+  Ini perilaku standar action fail2ban dengan `port = 2222`: login SSH diblokir,
+  layanan web tidak ikut mati. Kalau diinginkan blokir total per-IP, action harus
+  diganti (mis. iptables-allports) — catat sebagai opsi hardening lanjutan, bukan bug.
+- Deteksi tetap berjalan meski password auth sudah dimatikan (A.1), karena fail2ban
+  membaca entri "Invalid user"/"Connection closed ... [preauth]" di journal sshd.

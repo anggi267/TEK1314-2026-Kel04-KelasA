@@ -1,0 +1,29 @@
+BUKTI A.1 — konfigurasi SSH EFEKTIF (hasil sshd -T) dan file yang membentuknya
+Target Node: Ubuntu 26.04 LTS, hostname kabita, ssh port 2222 · 2026-10-23
+========================================================================
+
+$ sudo sshd -T | grep -Ei '^(port|passwordauthentication|permitrootlogin|pubkeyauthentication|kbdinteractiveauthentication|usepam)'
+port 2222
+usepam yes
+permitrootlogin no
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+
+Catatan penting: nilai di /etc/ssh/sshd_config SAJA tidak cukup. Baris pertama file itu
+adalah 'Include /etc/ssh/sshd_config.d/*.conf', dan sshd memakai nilai PERTAMA yang
+ditemukan — sehingga drop-in cloud-init bisa menimpa setting di bawahnya.
+
+$ grep -nE '^(Include|Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|KbdInteractiveAuthentication)' /etc/ssh/sshd_config
+24:Include /etc/ssh/sshd_config.d/*.conf
+35:Port 2222
+85:KbdInteractiveAuthentication no
+146:PermitRootLogin no
+147:PasswordAuthentication no
+148:PubkeyAuthentication yes
+
+### /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication no
+
+### /etc/cloud/cloud.cfg.d/99-kabita-ssh.cfg
+ssh_pwauth: false
