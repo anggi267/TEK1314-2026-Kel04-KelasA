@@ -1,0 +1,187 @@
+BUKTI RED TEAM — Skenario 2: Brute-force SSH (Hydra) + uji pengganti yang valid
+PBL TEK1314 Kelompok 4 — Fase 2, Skenario 2
+Tanggal eksekusi: 2026-10-28 (waktu dalam UTC, format YYYY-MM-DD HH:MM:SS)
+Attacker Node : PBL-K4-02-Attacker-Kali (192.168.4.100) — perintah dijalankan di dalam VM Kali
+Target Node   : PBL-K4-01-Target-KABITA (192.168.4.5) — replika, BUKAN sistem KABITA milik Mitra
+Semua isi berkas ini = keluaran perintah yang benar-benar dijalankan, bukan tulisan tangan.
+==============================================================================
+
+Perintah sesuai panduan: hydra -l iotadmin -P <wordlist> -s 2222 ssh://192.168.4.5
+
+RANGKUMAN HASIL (bagian A — perintah panduan apa adanya)
+  Hydra v9.7 BERHENTI SEBELUM SATU PUN percobaan password:
+    [ERROR] target ssh://192.168.4.5:2222/ does not support password authentication (method reply 4).
+  Artinya kontrol A.1 (PasswordAuthentication no) memang mematikan seluruh jalur serangan password.
+  KONSEKUENSI PENTING untuk fail2ban: karena tidak ada event autentikasi gagal yang dicatat sshd,
+  jail sshd mencatat "Total failed: 0" dan TIDAK ADA IP yang diban. Premis panduan
+  ("fail2ban tetap memblokir meski percobaan gagal karena metode auth salah") TIDAK terbukti:
+  serangan password tidak pernah sampai ke sshd sama sekali.
+
+RANGKUMAN HASIL (bagian B — uji pengganti: brute-force AKUN, bukan password)
+  9 percobaan login dengan user acak (attacker1, fakeuser3, admin5, baduser6, noSuchUser7, zzz8, qqq9, root, …)
+  → sshd mencatat "Invalid user …" + "Connection closed by invalid user … [preauth]"
+  → fail2ban: Total failed = 8, lalu BANNED 192.168.4.100 setelah melewati maxretry = 5
+  → Dari sisi attacker: TCP connect ke 2222 berubah jadi "Connection refused" (109 ms),
+    nmap: 2222/tcp filtered (reason port-unreach) = action nftables "reject with icmp port-unreachable".
+  → Layanan lain tidak terpengaruh: HTTP 80 tetap 200, MQTT 1883 tetap terbuka
+    (ban hanya untuk tcp dport 2222).
+  Kesimpulan: kontrol A.1 mematikan jalur password; kontrol A.2 (fail2ban) tetap bekerja,
+  tetapi hanya untuk kegagalan berbasis akun/publickey — bukan untuk brute-force password.
+
+------------------------------------------------------------------------------
+BAGIAN A — KELUARAN MENTAH (perintah panduan + hydra + uji koneksi)
+------------------------------------------------------------------------------
+=== identitas penyerang ===
+waktu attacker (UTC): 2026-10-28 06:41:04
+kali
+
+=== wordlist yang dipakai (dibuat terkontrol, 10 kandidat) ===
+jumlah kandidat: 10
+123 password iotadmin kali kabita admin letmein qwerty P@ssw0rd kambing 
+
+=== [2a] perintah PERSIS seperti panduan ===
+$ hydra -l iotadmin -P /tmp/pbl-wordlist.txt -s 2222 ssh://192.168.4.5
+Hydra v9.7 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2026-10-28 02:41:05
+[DATA] max 4 tasks per 1 server, overall 4 tasks, 10 login tries (l:1/p:10), ~3 tries per task
+[DATA] attacking ssh://192.168.4.5:2222/
+[ERROR] target ssh://192.168.4.5:2222/ does not support password authentication (method reply 4).
+[mulai 06:41:04  selesai 06:41:05]
+
+=== [2b] ringkasan hasil hydra (-o /tmp/pbl-hydra.out) ===
+# Hydra v9.7 run at 2026-10-28 02:41:05 on 192.168.4.5 ssh (hydra -l iotadmin -P /tmp/pbl-wordlist.txt -s 2222 -t 4 -V -o /tmp/pbl-hydra.out ssh://192.168.4.5)
+
+=== [2c] apakah koneksi SSH dari attacker masih dilayani setelah percobaan? ===
+cek pada 2026-10-28 06:41:05
+  tcp/2222 masih TERBUKA (koneksi TCP diterima)
+iotadmin@192.168.4.5: Permission denied (publickey).
+
+=== [2d] brute-force lanjutan khusus untuk memicu blokir: 8 percobaan password ===
+  [06:41:05] percobaan ke-1 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:05] percobaan ke-2 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:05] percobaan ke-3 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:06] percobaan ke-4 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:06] percobaan ke-5 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:06] percobaan ke-6 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:06] percobaan ke-7 -> iotadmin@192.168.4.5: Permission denied (publickey).
+  [06:41:06] percobaan ke-8 -> iotadmin@192.168.4.5: Permission denied (publickey).
+
+=== [2e] setelah percobaan beruntun: apakah port 2222 masih bisa dijangkau? ===
+cek pada 2026-10-28 06:41:06
+  tcp/2222 TERBUKA
+iotadmin@192.168.4.5: Permission denied (publickey).
+
+=== [2f] port lain dari attacker tetap normal? (bukti blokir hanya di 2222) ===
+  GET http://192.168.4.5/ -> HTTP 200 (%.3{time_total}s)
+
+waktu target (UTC): 2026-10-28 06:41:08
+
+--- jail sshd ---
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed:	0
+|  |- Total failed:	0
+|  `- Journal matches:	_SYSTEMD_UNIT=ssh.service + _COMM=sshd
+`- Actions
+   |- Currently banned:	0
+   |- Total banned:	0
+   `- Banned IP list:	
+--- parameter jail yang berlaku ---
+maxretry = 5
+findtime = 600
+bantime = 600
+
+------------------------------------------------------------------------------
+BAGIAN B — KELUARAN MENTAH (brute-force akun + efek ban)
+------------------------------------------------------------------------------
+waktu target (UTC): 2026-10-28 06:41:59
+
+--- baris auth.log untuk percobaan Hydra sebelumnya (apakah tercatat sebagai kegagalan?) ---
+Oct 28 06:40:27 kabita sshd-session[1856]: Connection closed by 192.168.4.100 port 48672
+Oct 28 06:41:05 kabita sshd-session[1979]: Disconnected from authenticating user iotadmin 192.168.4.100 port 51604 [preauth]
+Oct 28 06:41:05 kabita sshd-session[1981]: Connection closed by 192.168.4.100 port 51616
+Oct 28 06:41:05 kabita sshd-session[1982]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51618 [preauth]
+Oct 28 06:41:05 kabita sshd-session[1984]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51630 [preauth]
+Oct 28 06:41:05 kabita sshd-session[1986]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51634 [preauth]
+Oct 28 06:41:06 kabita sshd-session[1988]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51644 [preauth]
+Oct 28 06:41:06 kabita sshd-session[1990]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51654 [preauth]
+Oct 28 06:41:06 kabita sshd-session[1992]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51666 [preauth]
+Oct 28 06:41:06 kabita sshd-session[1994]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51674 [preauth]
+Oct 28 06:41:06 kabita sshd-session[1996]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51690 [preauth]
+Oct 28 06:41:06 kabita sshd-session[1998]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51702 [preauth]
+Oct 28 06:41:06 kabita sshd-session[2000]: Connection closed by 192.168.4.100 port 51718
+Oct 28 06:41:06 kabita sshd-session[2001]: Connection closed by authenticating user iotadmin 192.168.4.100 port 51732 [preauth]
+Oct 28 06:41:06 kabita sshd[1445]: srclimit_penalise: 192.168.4.100/32: activating ipv4 penalty of 19 seconds for penalty: failed authentication
+(kosong = tidak ada event kegagalan yang dicatat sshd → fail2ban tidak punya bahan untuk mem-ban)
+
+--- fail2ban sebelum uji lanjutan ---
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed:	0
+|  |- Total failed:	0
+|  `- Journal matches:	_SYSTEMD_UNIT=ssh.service + _COMM=sshd
+`- Actions
+   |- Currently banned:	0
+   |- Total banned:	0
+   `- Banned IP list:
+=== identitas penyerang ===
+waktu attacker (UTC): 2026-10-28 06:42:00
+kali
+
+=== [2B-a] brute-force AKUN (bukan password): 9 percobaan user acak ===
+    (jalur yang benar-benar menghasilkan kegagalan autentikasi di sshd,
+     karena password auth sudah dimatikan A.1)
+  [06:42:00] percobaan user='attacker1' -> attacker1@192.168.4.5: Permission denied (publickey).
+  [06:42:00] percobaan user='attacker2' -> attacker2@192.168.4.5: Permission denied (publickey).
+  [06:42:01] percobaan user='fakeuser3' -> fakeuser3@192.168.4.5: Permission denied (publickey).
+  [06:42:01] percobaan user='root' -> root@192.168.4.5: Permission denied (publickey).
+  [06:42:01] percobaan user='admin5' -> admin5@192.168.4.5: Permission denied (publickey).
+  [06:42:01] percobaan user='baduser6' -> baduser6@192.168.4.5: Permission denied (publickey).
+  [06:42:01] percobaan user='noSuchUser7' -> noSuchUser7@192.168.4.5: Permission denied (publickey).
+  [06:42:01] percobaan user='zzz8' -> zzz8@192.168.4.5: Permission denied (publickey).
+  [06:42:02] percobaan user='qqq9' -> qqq9@192.168.4.5: Permission denied (publickey).
+
+=== [2B-b] apakah port 2222 dari attacker masih bisa dijangkau sesudahnya? ===
+cek pada 2026-10-28 06:42:02
+  tcp/2222 TERBUKA (koneksi TCP masih terbentuk)
+
+=== [2B-c] apakah layanan lain tetap normal (blokir hanya di port 2222)? ===
+  GET http://192.168.4.5/                 -> HTTP 200
+  tcp/1883 (MQTT) masih TERBUKA
+
+=== [2B-d] percobaan ke-10: apakah sudah ditolak sejak TCP? ===
+bash: connect: Connection refused
+bash: line 1: /dev/tcp/192.168.4.5/2222: Connection refused
+  hasil TCP connect: GAGAL/ditolak  (durasi 109 ms)
+PORT     STATE    SERVICE      REASON
+2222/tcp filtered EtherNetIP-1 port-unreach ttl 64
+
+waktu target (UTC): 2026-10-28 06:42:31
+
+--- fail2ban sesudah uji lanjutan ---
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed:	1
+|  |- Total failed:	8
+|  `- Journal matches:	_SYSTEMD_UNIT=ssh.service + _COMM=sshd
+`- Actions
+   |- Currently banned:	1
+   |- Total banned:	1
+   `- Banned IP list:	192.168.4.100
+
+--- event sshd yang cocok pola fail2ban (5 baris terakhir) ---
+Oct 28 06:42:01 kabita sshd-session[2196]: Connection closed by authenticating user root 192.168.4.100 port 55008 [preauth]
+Oct 28 06:42:01 kabita sshd-session[2199]: Invalid user admin5 from 192.168.4.100 port 55014
+Oct 28 06:42:01 kabita sshd-session[2199]: Connection closed by invalid user admin5 192.168.4.100 port 55014 [preauth]
+Oct 28 06:42:01 kabita sshd-session[2201]: Invalid user baduser6 from 192.168.4.100 port 55022
+Oct 28 06:42:01 kabita sshd-session[2201]: Connection closed by invalid user baduser6 192.168.4.100 port 55022 [preauth]
+Oct 28 06:42:01 kabita sshd-session[2203]: Invalid user noSuchUser7 from 192.168.4.100 port 55036
+Oct 28 06:42:01 kabita sshd-session[2203]: Connection closed by invalid user noSuchUser7 192.168.4.100 port 55036 [preauth]
+Oct 28 06:42:01 kabita sshd-session[2205]: Invalid user zzz8 from 192.168.4.100 port 55038
+Oct 28 06:42:01 kabita sshd-session[2205]: Connection closed by invalid user zzz8 192.168.4.100 port 55038 [preauth]
+Oct 28 06:42:02 kabita sshd-session[2209]: Invalid user qqq9 from 192.168.4.100 port 55048
+Oct 28 06:42:02 kabita sshd-session[2209]: Connection closed by invalid user qqq9 192.168.4.100 port 55048 [preauth]
+Oct 28 06:42:02 kabita sshd-session[2222]: Connection closed by 192.168.4.100 port 55064
+
+--- aturan iptables hasil ban (jika ada) ---

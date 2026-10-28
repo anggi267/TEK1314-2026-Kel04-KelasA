@@ -1,0 +1,23 @@
+BUKTI RED TEAM — Skenario 2: aturan blokir yang benar-benar terpasang di Target Node
+PBL TEK1314 Kelompok 4 — Fase 2, Skenario 2
+Tanggal eksekusi: 2026-10-28 (waktu dalam UTC, format YYYY-MM-DD HH:MM:SS)
+Attacker Node : PBL-K4-02-Attacker-Kali (192.168.4.100) — perintah dijalankan di dalam VM Kali
+Target Node   : PBL-K4-01-Target-KABITA (192.168.4.5) — replika, BUKAN sistem KABITA milik Mitra
+Semua isi berkas ini = keluaran perintah yang benar-benar dijalankan, bukan tulisan tangan.
+==============================================================================
+
+Diambil dari Target Node lewat SSH (root) pada 2026-10-28 06:43:20 UTC.
+Menunjukkan mekanisme ban yang aktif: fail2ban v1.1.0, action = nftables.
+
+    table inet f2b-table {
+        set addr-set-sshd {
+            type ipv4_addr
+            elements = { 192.168.4.100 }
+        }
+        chain f2b-chain {
+            type filter hook input priority filter - 1; policy accept;
+            tcp dport 2222 ip saddr @addr-set-sshd reject with icmp port-unreachable
+        }
+    }
+
+Konfigurasi jail yang berlaku: maxretry = 5, findtime = 600 s, bantime = 600 s.

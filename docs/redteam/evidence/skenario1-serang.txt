@@ -1,0 +1,101 @@
+BUKTI RED TEAM — Skenario 1: Reconnaissance (nmap)
+PBL TEK1314 Kelompok 4 — Fase 2, Skenario 1
+Tanggal eksekusi: 2026-10-28 (waktu dalam UTC, format YYYY-MM-DD HH:MM:SS)
+Attacker Node : PBL-K4-02-Attacker-Kali (192.168.4.100) — perintah dijalankan di dalam VM Kali
+Target Node   : PBL-K4-01-Target-KABITA (192.168.4.5) — replika, BUKAN sistem KABITA milik Mitra
+Semua isi berkas ini = keluaran perintah yang benar-benar dijalankan, bukan tulisan tangan.
+==============================================================================
+
+Perintah sesuai panduan: nmap -sV -O -p- 192.168.4.5 (dari Kali)
+
+RANGKUMAN HASIL
+  Terbuka  : 2222/tcp (OpenSSH 10.2p1 Ubuntu), 80/tcp (nginx 1.28.3 Ubuntu), 1883/tcp (MQTT)
+  443/tcp  : CLOSED — UFW mengizinkan tapi TIDAK ada layanan TLS yang mendengarkan
+  22, 5432, 8080 : FILTERED (no-response) — di-drop UFW, tidak terlihat dari LAN
+  Sisanya 65.531 port: filtered (no-response)
+  Kesesuaian dengan kontrol B.3/B.5: PostgreSQL (5432) tidak terekspos, API (8080) tidak terekspos.
+  Catatan: nmap 7.991 di Kali tetap bisa melakukan -O sebagai user biasa (tanpa sudo).
+
+------------------------------------------------------------------------------
+KELUARAN MENTAH
+------------------------------------------------------------------------------
+=== identitas penyerang ===
+waktu attacker (UTC): 2026-10-28 06:35:23
+kali
+ip: 192.168.4.100/24
+
+=== [1a] perintah PERSIS seperti panduan (nmap -sV -O -p-) ===
+$ nmap -sV -O -p- 192.168.4.5
+Starting Nmap 7.991 ( https://nmap.org ) at 2026-10-28 02:35 -0400
+Nmap scan report for 192.168.4.5
+Host is up (0.0022s latency).
+Not shown: 65531 filtered tcp ports (no-response)
+PORT     STATE  SERVICE VERSION
+80/tcp   open   http    nginx 1.28.3 (Ubuntu)
+443/tcp  closed https
+1883/tcp open   mqtt
+2222/tcp open   ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.8 (Ubuntu Linux; protocol 2.0)
+MAC Address: 08:00:27:BE:8E:3F (Oracle VirtualBox virtual NIC)
+Device type: general purpose|router|storage-misc
+Running (JUST GUESSING): Linux 4.X|5.X|2.6.X|3.X (88%), MikroTik RouterOS 7.X (87%), HP embedded (86%)
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5 cpe:/o:linux:linux_kernel:2.6 cpe:/o:linux:linux_kernel:3 cpe:/o:mikrotik:routeros:7 cpe:/o:linux:linux_kernel:5.6.3 cpe:/h:hp:p2000_g3 cpe:/o:linux:linux_kernel:6.18
+Aggressive OS guesses: Linux 4.15 - 5.19 (88%), Linux 2.6.32 - 3.13 (87%), Linux 5.0 - 5.14 (87%), OpenWrt 22.03 (Linux 5.10) (87%), MikroTik RouterOS 7.2 - 7.5 (Linux 5.6.3) (87%), HP P2000 G3 NAS device (86%), Linux 6.18 (86%), Linux 2.6.23 - 2.6.38 (85%), Linux 5.0 (85%), Linux 4.10 (85%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 163.55 seconds
+[exit 0]
+
+=== [1b] perintah yang benar-benar dipakai (tanpa -O, rate dibatasi) ===
+$ nmap -Pn -sV -p- --min-rate 2000 --max-retries 1 -T4 192.168.4.5
+Starting Nmap 7.991 ( https://nmap.org ) at 2026-10-28 02:38 -0400
+Nmap scan report for 192.168.4.5
+Host is up (0.0017s latency).
+Not shown: 65531 filtered tcp ports (no-response)
+PORT     STATE  SERVICE VERSION
+80/tcp   open   http    nginx 1.28.3 (Ubuntu)
+443/tcp  closed https
+1883/tcp open   mqtt
+2222/tcp open   ssh     OpenSSH 10.2p1 Ubuntu 2ubuntu3.8 (Ubuntu Linux; protocol 2.0)
+MAC Address: 08:00:27:BE:8E:3F (Oracle VirtualBox virtual NIC)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 135.60 seconds
+[exit 0]
+
+=== [1c] konfirmasi status port kunci ===
+  tcp/22  tertutup atau filtered (tidak ada respons/bukan permit)
+  tcp/80  TERBUKA
+  tcp/443  tertutup atau filtered (tidak ada respons/bukan permit)
+  tcp/1883  TERBUKA
+  tcp/2222  TERBUKA
+  tcp/5432  tertutup atau filtered (tidak ada respons/bukan permit)
+  tcp/8080  tertutup atau filtered (tidak ada respons/bukan permit)
+
+=== [1d] port tertutup vs filtered (ICMP) ===
+PORT     STATE    SERVICE    REASON
+22/tcp   filtered ssh        no-response
+5432/tcp filtered postgresql no-response
+8080/tcp filtered http-proxy no-response
+
+waktu target (UTC): 2026-10-28 06:40:43
+
+port 2222
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                 
+LISTEN 0      200        127.0.0.1:5432      0.0.0.0:*    users:(("postgres",pid=1192,fd=6))                     
+LISTEN 0      100          0.0.0.0:1883      0.0.0.0:*    users:(("mosquitto",pid=1050,fd=5))                    
+LISTEN 0      4096         0.0.0.0:2222      0.0.0.0:*    users:(("sshd",pid=1445,fd=3),("systemd",pid=1,fd=100))
+LISTEN 0      4096       127.0.0.1:8080      0.0.0.0:*    users:(("kabita-backend",pid=1296,fd=7))               
+LISTEN 0      511          0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=1106,fd=5),("nginx",pid=1102,fd=5))
+LISTEN 0      4096            [::]:2222         [::]:*    users:(("sshd",pid=1445,fd=4),("systemd",pid=1,fd=101))
+
+proses yang mendengarkan (ringkas):
+(("kabita-backend"
+(("mosquitto"
+(("nginx"
+(("postgres"
+(("sshd"
+(("systemd-resolve"
