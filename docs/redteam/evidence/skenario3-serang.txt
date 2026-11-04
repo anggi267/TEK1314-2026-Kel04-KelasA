@@ -1,167 +1,93 @@
-BUKTI RED TEAM — Skenario 3: SQL injection (sqlmap + payload manual)
-PBL TEK1314 Kelompok 4 — Fase 2, Skenario 3
-Tanggal eksekusi: 2026-10-28 (semua waktu UTC, format YYYY-MM-DD HH:MM:SS)
-Attacker Node : PBL-K4-02-Attacker-Kali (192.168.4.100) — perintah dijalankan di dalam VM Kali
-Target Node   : PBL-K4-01-Target-KABITA (192.168.4.5) — replika lab, BUKAN sistem KABITA milik Mitra
-Isi berkas ini = keluaran perintah yang benar-benar dijalankan (bukan tulisan tangan).
-==============================================================================
-
-Perintah sesuai panduan: sqlmap -u "http://192.168.4.5/api/v1/kambing/1/riwayat" --batch
-
-RANGKUMAN HASIL
-  Uji manual payload pada segmen path id — keempat payload dijawab HTTP 400:
-    1 OR 1=1 (1%20OR%201%3D1)      -> 400 Bad Request
-    tanda kutip tunggal (1%27)     -> 400 Bad Request
-    1 UNION SELECT 1,2,3,4         -> 400 Bad Request
-    1;SELECT pg_sleep(2)           -> 400 Bad Request
-  sqlmap (perintah panduan apa adanya): 2.313 permintaan ber-UA "sqlmap/1.10.9#stable".
-    Distribusi respons di access log nginx: 2208 x 400, 93 x 404, 12 x 200.
-    12 respons 200 itu bukan bukti lolos: semuanya URL bersih yang ditambahi QUERY STRING
-    karangan sqlmap (mis. ?tyqb=2266 AND 1=1 UNION ...) yang diabaikan aplikasi
-    (Go hanya membaca segmen path); body-nya sama dengan baseline (599 byte).
-  sqlmap menyimpulkan: "all tested parameters do not appear to be injectable".
-  Uji ulang dengan penanda titik injeksi eksplisit (1*/riwayat, --level=2 --risk=1): hasil sama,
-  501 x HTTP 400, tidak ada parameter yang injectable.
-  Root cause dibaca dari kode: segmen path divalidasi strconv.Atoi (main.go kambingSubRouter)
-  dan query-nya parameterized: db.Query("... WHERE kambing_id = $1 ...", id).
-  log_statement PostgreSQL tidak merekam satu pun query ber-payload dalam jendela uji;
-  permintaan ditolak sebelum menyentuh database.
+BUKTI SKENARIO 3 — SQL injection pada endpoint riwayat (payload manual dan sqlmap)
+PBL TEK1314 Kelompok 4 · Fase 2 · Red Team
+Penyerang: 192.168.4.100 (PBL-K4-02-Attacker-Kali)   Target: 192.168.4.5 (PBL-K4-01-Target-KABITA)
+Eksekusi: 2026-11-04 14:55:26 (UTC), durasi 14.4 detik
 
 ------------------------------------------------------------------------------
-KELUARAN MENTAH
+$ curl -s -o /dev/null -w "baseline GET /api/v1/kambing/1/riwayat -> HTTP %{http_code}\n" --max-time 10 http://192.168.4.5/api/v1/kambing/1/riwayat
+baseline GET /api/v1/kambing/1/riwayat -> HTTP 200
+
 ------------------------------------------------------------------------------
-=== identitas penyerang ===
-waktu attacker (UTC): 2026-10-28 06:43:08
-kali
+$ curl -s -i --max-time 10 "http://192.168.4.5/api/v1/kambing/1%20OR%201%3D1/riwayat" | head -6
+HTTP/1.1 400 Bad Request
+Server: nginx/1.28.3 (Ubuntu)
+Date: Wed, 04 Nov 2026 14:55:26 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 40
+Connection: keep-alive
 
-=== [3a] baseline endpoint tanpa payload ===
-  GET /api/v1/kambing/1/riwayat -> HTTP 200
+------------------------------------------------------------------------------
+$ curl -s -i --max-time 10 "http://192.168.4.5/api/v1/kambing/1%27/riwayat" | head -6
+HTTP/1.1 400 Bad Request
+Server: nginx/1.28.3 (Ubuntu)
+Date: Wed, 04 Nov 2026 14:55:26 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 40
+Connection: keep-alive
 
-=== [3b] uji manual payload SQLi pada segmen path id (payload '1 OR 1=1') ===
-$ curl -s -i "http://192.168.4.5/api/v1/kambing/1%20OR%201%3D1/riwayat"
+------------------------------------------------------------------------------
+$ curl -s -i --max-time 10 "http://192.168.4.5/api/v1/kambing/1%20UNION%20SELECT%201,2,3,4/riwayat" | head -6
 HTTP/1.1 400 Bad Request
-  ---
-$ curl -s -i "http://192.168.4.5/api/v1/kambing/1%27/riwayat"
-HTTP/1.1 400 Bad Request
-  ---
-$ curl -s -i "http://192.168.4.5/api/v1/kambing/1%20UNION%20SELECT%201,2,3,4/riwayat"
-HTTP/1.1 400 Bad Request
-  ---
-$ curl -s -i "http://192.168.4.5/api/v1/kambing/1;SELECT%20pg_sleep(2)/riwayat"
-HTTP/1.1 400 Bad Request
-  ---
+Server: nginx/1.28.3 (Ubuntu)
+Date: Wed, 04 Nov 2026 14:55:26 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 40
+Connection: keep-alive
 
-=== [3c] perintah PERSIS seperti panduan (sqlmap tanpa penanda *) ===
-$ sqlmap -u "http://192.168.4.5/api/v1/kambing/1/riwayat" --batch
-[02:43:10] [INFO] testing 'Boolean-based blind - Parameter replace (original value)'
-[02:43:10] [INFO] testing 'MySQL >= 5.1 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (EXTRACTVALUE)'
-[02:43:10] [INFO] testing 'PostgreSQL AND error-based - WHERE or HAVING clause'
-[02:43:10] [INFO] testing 'Microsoft SQL Server/Sybase AND error-based - WHERE or HAVING clause (IN)'
-[02:43:10] [INFO] testing 'Oracle AND error-based - WHERE or HAVING clause (XMLType)'
-[02:43:10] [INFO] testing 'H2 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (CAST)'
-[02:43:10] [INFO] testing 'Generic inline queries'
-[02:43:10] [INFO] testing 'PostgreSQL > 8.1 stacked queries (comment)'
-[02:43:10] [INFO] testing 'Microsoft SQL Server/Sybase stacked queries (comment)'
-[02:43:10] [INFO] testing 'Oracle stacked queries (DBMS_PIPE.RECEIVE_MESSAGE - comment)'
-[02:43:10] [INFO] testing 'MySQL >= 5.0.12 AND time-based blind (query SLEEP)'
-[02:43:10] [INFO] testing 'PostgreSQL > 8.1 AND time-based blind'
-[02:43:10] [INFO] testing 'Microsoft SQL Server/Sybase time-based blind (IF)'
-[02:43:10] [INFO] testing 'Oracle AND time-based blind'
-[02:43:10] [INFO] testing 'CUBRID AND time-based blind (SLEEP)'
-[02:43:10] [INFO] testing 'CUBRID OR time-based blind (SLEEP)'
+------------------------------------------------------------------------------
+$ curl -s -i --max-time 10 "http://192.168.4.5/api/v1/kambing/1;SELECT%20pg_sleep(3)/riwayat" | head -6
+HTTP/1.1 400 Bad Request
+Server: nginx/1.28.3 (Ubuntu)
+Date: Wed, 04 Nov 2026 14:55:26 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 40
+Connection: keep-alive
+
+------------------------------------------------------------------------------
+$ sqlmap -u "http://192.168.4.5/api/v1/kambing/1/riwayat" --batch --flush-session --timeout=10 --retries=1 2>&1 | tail -10
+[09:55:29] [INFO] testing 'CUBRID OR time-based blind (SLEEP)'
 it is recommended to perform only basic UNION tests if there is not at least one other (potential) technique found. Do you want to reduce the number of requests? [Y/n] Y
-[02:43:10] [INFO] testing 'Generic UNION query (NULL) - 1 to 10 columns'
-[02:43:10] [WARNING] URI parameter '#1*' does not seem to be injectable
-[02:43:10] [CRITICAL] all tested parameters do not appear to be injectable. Try to increase values for '--level'/'--risk' options if you wish to perform more tests. If you suspect that there is some kind of protection mechanism involved (e.g. WAF) maybe you could try to use option '--tamper' (e.g. '--tamper=space2comment') and/or switch '--random-agent'
-[02:43:10] [WARNING] HTTP error codes detected during run:
+[09:55:29] [INFO] testing 'Generic UNION query (NULL) - 1 to 10 columns'
+[09:55:29] [WARNING] URI parameter '#1*' does not seem to be injectable
+[09:55:29] [CRITICAL] all tested parameters do not appear to be injectable. Try to increase values for '--level'/'--risk' options if you wish to perform more tests. If you suspect that there is some kind of protection mechanism involved (e.g. WAF) maybe you could try to use option '--tamper' (e.g. '--tamper=space2comment') and/or switch '--random-agent'
+[09:55:29] [WARNING] HTTP error codes detected during run:
 404 (Not Found) - 93 times
 
-[*] ending @ 02:43:10 /2026-10-28/
+[*] ending @ 09:55:29 /2026-11-04/
 
-
-=== [3d] sqlmap dengan penanda titik injeksi pada path (1*) ===
-$ sqlmap -u "http://192.168.4.5/api/v1/kambing/1*/riwayat" --batch --level=2 --risk=1
-[02:43:14] [INFO] target URL content is stable
-[02:43:14] [INFO] testing if URI parameter '#1*' is dynamic
-[02:43:14] [INFO] URI parameter '#1*' appears to be dynamic
-[02:43:14] [WARNING] heuristic (basic) test shows that URI parameter '#1*' might not be SQL injectable
-[02:43:14] [INFO] testing for SQL injection on URI parameter '#1*'
-[02:43:14] [INFO] testing 'AND boolean-based blind - WHERE or HAVING clause'
-[02:43:14] [INFO] testing 'AND boolean-based blind - WHERE or HAVING clause (subquery - comment)'
-[02:43:14] [INFO] testing 'AND boolean-based blind - WHERE or HAVING clause (comment)'
-[02:43:14] [INFO] testing 'MySQL RLIKE boolean-based blind - WHERE, HAVING, ORDER BY or GROUP BY clause'
-[02:43:15] [INFO] testing 'PostgreSQL AND boolean-based blind - WHERE or HAVING clause (CAST)'
-[02:43:15] [INFO] testing 'Oracle AND boolean-based blind - WHERE or HAVING clause (CTXSYS.DRITHSX.SN)'
-[02:43:15] [INFO] testing 'SQLite AND boolean-based blind - WHERE or HAVING clause (JSON)'
-[02:43:15] [INFO] testing 'Boolean-based blind - Parameter replace (original value)'
-[02:43:15] [INFO] testing 'Boolean-based blind - Parameter replace (DUAL)'
-[02:43:15] [INFO] testing 'Boolean-based blind - Parameter replace (CASE)'
-[02:43:15] [INFO] testing 'MySQL >= 5.0 boolean-based blind - ORDER BY, GROUP BY clause'
-[02:43:15] [INFO] testing 'PostgreSQL boolean-based blind - ORDER BY, GROUP BY clause'
-[02:43:15] [INFO] testing 'MySQL >= 5.6 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (GTID_SUBSET)'
-[02:43:15] [INFO] testing 'MySQL >= 5.1 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (EXTRACTVALUE)'
-[02:43:16] [INFO] testing 'PostgreSQL AND error-based - WHERE or HAVING clause'
-[02:43:16] [INFO] testing 'Microsoft SQL Server/Sybase AND error-based - WHERE or HAVING clause (IN)'
-[02:43:16] [INFO] testing 'Microsoft SQL Server/Sybase AND error-based - WHERE or HAVING clause (CONVERT)'
-[02:43:16] [INFO] testing 'Microsoft SQL Server/Sybase AND error-based - WHERE or HAVING clause (CONCAT)'
-[02:43:16] [INFO] testing 'Oracle AND error-based - WHERE or HAVING clause (XMLType)'
-[02:43:16] [INFO] testing 'Oracle AND error-based - WHERE or HAVING clause (DBMS_UTILITY.SQLID_TO_SQLHASH)'
-[02:43:16] [INFO] testing 'H2 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (CAST)'
-[02:43:16] [INFO] testing 'SQLite >= 3.9 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (JSON path)'
-[02:43:17] [INFO] testing 'MySQL >= 5.1 error-based - Parameter replace (EXTRACTVALUE)'
-[02:43:17] [INFO] testing 'PostgreSQL error-based - Parameter replace'
-[02:43:17] [INFO] testing 'Microsoft SQL Server error-based - Stacking (RAISERROR)'
-[02:43:17] [INFO] testing 'Microsoft SQL Server/Sybase error-based - Stacking (EXEC)'
-[02:43:17] [INFO] testing 'Generic inline queries'
-[02:43:17] [INFO] testing 'MySQL inline queries'
-[02:43:17] [INFO] testing 'PostgreSQL inline queries'
-[02:43:17] [INFO] testing 'Microsoft SQL Server/Sybase inline queries'
-[02:43:17] [INFO] testing 'Oracle inline queries'
-[02:43:17] [INFO] testing 'MySQL >= 5.0.12 stacked queries (comment)'
-[02:43:17] [INFO] testing 'PostgreSQL > 8.1 stacked queries (comment)'
-[02:43:17] [INFO] testing 'Microsoft SQL Server/Sybase stacked queries (comment)'
-[02:43:17] [INFO] testing 'Microsoft SQL Server/Sybase stacked queries (DECLARE - comment)'
-[02:43:18] [INFO] testing 'Oracle stacked queries (DBMS_PIPE.RECEIVE_MESSAGE - comment)'
-[02:43:18] [INFO] testing 'MySQL >= 5.0.12 AND time-based blind (query SLEEP)'
-[02:43:18] [INFO] testing 'MySQL >= 5.0.12 AND time-based blind (SLEEP)'
-[02:43:19] [INFO] testing 'MySQL >= 5.0.12 RLIKE time-based blind'
-[02:43:19] [INFO] testing 'PostgreSQL > 8.1 AND time-based blind'
-[02:43:19] [INFO] testing 'Microsoft SQL Server/Sybase time-based blind (IF)'
-[02:43:19] [INFO] testing 'Oracle AND time-based blind'
-[02:43:20] [INFO] testing 'CUBRID AND time-based blind (SLEEP)'
-[02:43:20] [INFO] testing 'CUBRID OR time-based blind (SLEEP)'
-[02:43:20] [INFO] testing 'MySQL >= 5.0.12 time-based blind - Parameter replace'
+------------------------------------------------------------------------------
+$ sqlmap -u "http://192.168.4.5/api/v1/kambing/1*/riwayat" --batch --flush-session --level=2 --risk=1 --timeout=10 --retries=1 2>&1 | tail -12
+[09:55:39] [INFO] testing 'CUBRID OR time-based blind (SLEEP)'
+[09:55:39] [INFO] testing 'MySQL >= 5.0.12 time-based blind - Parameter replace'
 it is recommended to perform only basic UNION tests if there is not at least one other (potential) technique found. Do you want to reduce the number of requests? [Y/n] Y
-[02:43:20] [INFO] testing 'Generic UNION query (NULL) - 1 to 10 columns'
-[02:43:21] [INFO] testing 'MySQL UNION query (NULL) - 1 to 10 columns'
-[02:43:21] [WARNING] URI parameter '#1*' does not seem to be injectable
-[02:43:21] [CRITICAL] all tested parameters do not appear to be injectable. Try to increase values for '--level'/'--risk' options if you wish to perform more tests. If you suspect that there is some kind of protection mechanism involved (e.g. WAF) maybe you could try to use option '--tamper' (e.g. '--tamper=space2comment') and/or switch '--random-agent'
-[02:43:21] [WARNING] HTTP error codes detected during run:
+[09:55:39] [INFO] testing 'Generic UNION query (NULL) - 1 to 10 columns'
+[09:55:39] [INFO] testing 'MySQL UNION query (NULL) - 1 to 10 columns'
+[09:55:39] [WARNING] URI parameter '#1*' does not seem to be injectable
+[09:55:39] [CRITICAL] all tested parameters do not appear to be injectable. Try to increase values for '--level'/'--risk' options if you wish to perform more tests. If you suspect that there is some kind of protection mechanism involved (e.g. WAF) maybe you could try to use option '--tamper' (e.g. '--tamper=space2comment') and/or switch '--random-agent'
+[09:55:39] [WARNING] HTTP error codes detected during run:
 400 (Bad Request) - 501 times
 
-[*] ending @ 02:43:21 /2026-10-28/
+[*] ending @ 09:55:39 /2026-11-04/
 
-[exit 0]
+------------------------------------------------------------------------------
+Pemeriksaan sisi Target Node (dibaca dari host lab lewat SSH)
+$ grep -c '04/Nov/2026.*sqlmap' /var/log/nginx/access.log; grep -c '04/Nov/2026' /var/log/nginx/access.log; grep -c '04/Nov/2026.* 400 ' /var/log/nginx/access.log
+1295
+1331
+1101
+$ grep '04/Nov/2026.*sqlmap' /var/log/nginx/access.log | tail -3
+192.168.4.100 - - [04/Nov/2026:14:55:39 +0000] "GET /api/v1/kambing/1%22%20ORDER%20BY%203413%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
+192.168.4.100 - - [04/Nov/2026:14:55:39 +0000] "GET /api/v1/kambing/1%20ORDER%20BY%201%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
+192.168.4.100 - - [04/Nov/2026:14:55:39 +0000] "GET /api/v1/kambing/1%20ORDER%20BY%208675%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
+$ journalctl -u kabita-backend --since '-20 min' | grep -Ei 'sql|query error|pq:'
+(tanpa keluaran — tidak ada error query di backend)
+------------------------------------------------------------------------------
 
-=== [3e] rangkuman User-Agent sqlmap di sisi jaringan (dari attacker hanya bisa lihat request sendiri) ===
-  UA sqlmap -> HTTP 200
-
-waktu target (UTC): 2026-10-28 06:43:22
-
---- User-Agent sqlmap di access log nginx (10 terakhir) ---
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%22%20ORDER%20BY%201%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%22%20ORDER%20BY%203379%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%20ORDER%20BY%201%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%20ORDER%20BY%202393%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1/riwayat HTTP/1.1" 200 599 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-jumlah request UA sqlmap: 2313
-
---- 400 dari nginx (path kambing) ---
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%22%29%20ORDER%20BY%202431%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%22%20ORDER%20BY%201%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%22%20ORDER%20BY%203379%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%20ORDER%20BY%201%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-192.168.4.100 - - [28/Oct/2026:06:43:21 +0000] "GET /api/v1/kambing/1%20ORDER%20BY%202393%23/riwayat HTTP/1.1" 400 40 "-" "sqlmap/1.10.9#stable (https://sqlmap.org)"
-
---- log backend soal id/riwayat ---
-(kosong = tidak ada error query ke DB)
+KESIMPULAN
+------------------------------------------------------------------------------
+Empat payload manual (OR 1=1, kutip tunggal, UNION SELECT, stacked query pg_sleep) semuanya dijawab
+400 Bad Request, sehingga tidak ada payload yang mencapai basis data. sqlmap mengirim 1.295 request pada
+hari itu (1.101 di antaranya 400) dan menyimpulkan "all tested parameters do not appear to be injectable",
+baik dengan penanda otomatis maupun penanda manual pada segmen path. Log backend bersih dari error query.
+Kesimpulan: endpoint riwayat tidak rentan SQL injection karena parameter id divalidasi sebagai bilangan
+bulat sebelum query dan query memakai placeholder ($1).

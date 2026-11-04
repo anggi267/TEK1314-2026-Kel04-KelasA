@@ -1,0 +1,71 @@
+BUKTI PEMERIKSAAN SECURITY ONION — SISI DETEKSI
+PBL TEK1314 Kelompok 4 · Fase 2
+Sensor: PBL-K4-03-Monitoring-Onion (192.168.4.200) · antarmuka sniffing eth0 (PROMISC)
+Diperiksa: 2026-11-04 15:16–15:19 UTC (setelah kelima skenario dieksekusi)
+Screenshot: security-onion-squert-0-event.png (Squert), security-onion-pipeline-ids.png (terminal sensor)
+
+Pemeriksaan dijalankan dari konsol VM Security Onion (sesi analyst), bukan dengan mengubah konfigurasi apa pun.
+
+------------------------------------------------------------------------------
+1. Squert (antarmuka alert Sguil) — interval hari eksekusi
+Screenshot: security-onion-squert-0-event.png
+
+Nilai yang terbaca pada halaman:
+INTERVAL            : 2026-11-04 00:00:00 -> 2026-11-04 23:59:59 (+00:00)
+FILTERED BY OBJECT  : NO
+FILTERED BY SENSOR  : NO
+queued events       : 0
+total events        : 0
+total signatures    : -
+isi tabel           : "No result. If this is unexpected try this"
+waktu pemeriksaan   : UTC 15:19:23
+
+Artinya: seluruh rentang hari sudah dicakup dan tidak ada filter yang aktif, tetapi tidak satu pun alert
+tercatat — termasuk setelah pemindaian 65.531 port, 1.295 request sqlmap, dan 23 pesan MQTT palsu.
+
+------------------------------------------------------------------------------
+2. Proses IDS dan pipeline alert pada sensor
+Screenshot: security-onion-pipeline-ids.png
+
+perintah:
+$ date -u; ps -eo comm | sort -u | grep -E '^(snort|barnyard2)$'; ip -br link | grep PROMISC | cut -d' ' -f1-2; ls -l /nsm/sensor_data/seconion-eth0/snort-1/ | tail -1; find /nsm/sensor_data -name 'snort.unified2*' -newermt 2026-11-01 | wc -l
+
+output:
+Wed Nov  4 15:16:42 UTC 2026
+barnyard2
+eth0
+-rw-r----- 1 squil squil 0 Jun 19  2020 snort.unified2.1592591088
+0
+
+perintah (konfigurasi output Snort):
+$ grep -iE 'unified2|output' /etc/nsm/seconion-eth0/snort.conf | head -6
+
+output:
+# 6) Configure output plugins
+# Step #6: Configure output plugins
+# For more information, see Snort Manual, Configuring Snort - Output Modules
+# unified2
+# output unified2: filename merged.log, limit 128, nostamp, mpls_event_types, vlan_event_types
+output unified2: filename snort.unified2, limit 128
+
+perintah (command line proses saat diperiksa):
+$ for p in $(pgrep -x snort); do tr '\0' ' ' < /proc/$p/cmdline; echo; done
+
+output:
+/usr/sbin/snort -c /etc/nsm/seconion-eth0/snort.conf -D -u sguil -g sguil -m 033 -i eth0
+(proses snort sudah tidak ada pada pemeriksaan berikutnya; hanya barnyard2 yang tersisa)
+
+------------------------------------------------------------------------------
+KESIMPULAN
+------------------------------------------------------------------------------
+Selama kelima skenario, Security Onion tidak menghasilkan satu pun alert: Squert menunjukkan 0 event pada
+seluruh rentang 4 November 2026 tanpa filter, sehingga hasilnya bukan karena penyaringan tampilan.
+Penyebab yang terlihat di sensor: berkas alert Snort (unified2) terakhir berukuran 0 byte dan bertanggal
+19 Juni 2020, tidak ada satu pun berkas unified2 baru sejak 1 November 2026, dan proses snort tidak lagi
+dijumpai saat pemeriksaan (hanya barnyard2 yang berjalan). Karena unified2 tidak pernah ditulis, barnyard2
+tidak memiliki apa pun untuk dimasukkan ke basis data Sguil, dan Squert tetap kosong.
+
+Konsekuensi: pada kondisi ini seluruh aktivitas penyerang di segmen 192.168.4.0/24 tidak terdeteksi oleh
+IDS/NSM. Ini dicatat apa adanya sebagai temuan, bukan sebagai bukti bahwa serangan tidak berbahaya.
+Perbaikan berada di ranah Blue Team (pastikan snort berjalan dengan -i eth0, arahkan output unified2 ke
+/nsm/sensor_data/seconion-eth0/snort-1/ dengan path absolut, lalu jalankan barnyard2 untuk sensor tersebut).

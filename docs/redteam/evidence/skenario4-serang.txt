@@ -1,75 +1,44 @@
-BUKTI RED TEAM — Skenario 4: MQTT publish tanpa kredensial
-PBL TEK1314 Kelompok 4 — Fase 2, Skenario 4
-Tanggal eksekusi: 2026-10-28 (semua waktu UTC, format YYYY-MM-DD HH:MM:SS)
-Attacker Node : PBL-K4-02-Attacker-Kali (192.168.4.100) — perintah dijalankan di dalam VM Kali
-Target Node   : PBL-K4-01-Target-KABITA (192.168.4.5) — replika lab, BUKAN sistem KABITA milik Mitra
-Isi berkas ini = keluaran perintah yang benar-benar dijalankan (bukan tulisan tangan).
-==============================================================================
-
-Perintah sesuai panduan: mosquitto_pub -h 192.168.4.5 -p 1883 -t kabita/readings \
-                        -m '{"tag_rfid":"RFID-999","berat_kg":0}'   (tanpa -u/-P)
-
-RANGKUMAN HASIL
-  Client ditolak di level broker (bukan di aplikasi):
-    "Connection error: Connection Refused: not authorised"  (exit code mosquitto_pub = 5)
-  Konsisten pada 3 percobaan berulang; username tanpa password juga ditolak.
-  TCP handshake ke 1883 tetap diterima (port memang terbuka ke LAN, sesuai kontrol B.1) —
-  penolakan terjadi setelah CONNECT, lewat CONNACK "not authorised" (allow_anonymous false).
-  Log broker mencatat setiap penolakan: "Client <client-id> disconnected, not authorised."
-  Tidak ada pesan yang sampai ke processReading; tabel bobot_log untuk tag RFID-999 = 0 baris.
-  Catatan: exit code pada bagian [4b] tercetak 0 karena quirk pembungkus skrip ($? dievaluasi
-  setelah ekspansi); nilai yang benar terlihat pada bagian [4a] (exit 5). Pesan error identik.
+BUKTI SKENARIO 4 — Akses broker MQTT tanpa kredensial
+PBL TEK1314 Kelompok 4 · Fase 2 · Red Team
+Penyerang: 192.168.4.100 (PBL-K4-02-Attacker-Kali)   Target: 192.168.4.5 (PBL-K4-01-Target-KABITA)
+Eksekusi: 2026-11-04 14:55:41 (UTC), durasi 0.3 detik
 
 ------------------------------------------------------------------------------
-KELUARAN MENTAH
-------------------------------------------------------------------------------
-=== identitas penyerang ===
-waktu attacker (UTC): 2026-10-28 06:44:58
-kali
-
-=== [4a] perintah PERSIS seperti panduan — publish tanpa -u/-P ===
-$ mosquitto_pub -h 192.168.4.5 -p 1883 -t kabita/readings -m '{"tag_rfid":"RFID-999","berat_kg":0}'
+$ mosquitto_pub -h 192.168.4.5 -p 1883 -t kabita/readings -m '{"tag_rfid":"RFID-002","berat_kg":45}'
 Connection error: Connection Refused: not authorised
 Error: The connection was refused
-[exit 5]
 
-=== [4b] percobaan berulang 3x untuk memastikan hasilnya konsisten ===
-  [06:44:58] percobaan 1 -> exit=0 | Connection error: Connection Refused: not authorised
+(kode keluar: 5)
+------------------------------------------------------------------------------
+$ mosquitto_sub -h 192.168.4.5 -p 1883 -t 'kabita/#' -C 1 -W 6
+Connection error: Connection Refused: not authorised
+
+(kode keluar: 5)
+------------------------------------------------------------------------------
+$ mosquitto_pub -h 192.168.4.5 -p 1883 -u anonym -P anonym -t kabita/readings -m '{"tag_rfid":"RFID-002","berat_kg":45}'
+Connection error: Connection Refused: not authorised
 Error: The connection was refused
-  [06:44:58] percobaan 2 -> exit=0 | Connection error: Connection Refused: not authorised
-Error: The connection was refused
-  [06:44:58] percobaan 3 -> exit=0 | Connection error: Connection Refused: not authorised
-Error: The connection was refused
 
-=== [4c] koneksi mentah ke port 1883 (apakah TCP diterima broker?) ===
-  tcp/1883 TERBUKA — TCP handshake diterima, penolakan terjadi di level MQTT (CONNACK)
+(kode keluar: 5)
+------------------------------------------------------------------------------
+Pemeriksaan sisi Target Node (dibaca dari host lab lewat SSH)
+$ grep -Ei 'not authorised' /var/log/mosquitto/mosquitto.log | tail -4
+1793804141: Client auto-8893AC65-DCFB-35C1-DD57-0E4F8D9E5CA1 disconnected, not authorised.
+1793804141: Client auto-F34A5CDC-A29C-CEC3-386B-3A681F92FACD disconnected, not authorised.
+1793804141: Client auto-5AB2F614-ED0B-E003-89A3-3CD2F7814669 disconnected, not authorised.
+1793804626: Client nmap disconnected, not authorised.
 
-=== [4d] apakah pesan bisa masuk dengan username tanpa password? ===
-  Connection error: Connection Refused: not authorised
-  Error: The connection was refused
-[exit 0]
+$ export PGUSER=$(grep '^DB_USER=' /opt/kabita-backend/.env | cut -d= -f2-)
+$ export PGPASSWORD=$(grep '^DB_PASSWORD=' /opt/kabita-backend/.env | cut -d= -f2-)
+$ export PGDATABASE=$(grep '^DB_NAME=' /opt/kabita-backend/.env | cut -d= -f2-)
+$ psql -h 127.0.0.1 -tAc 'select count(*) from bobot_log'
+60
+------------------------------------------------------------------------------
 
-waktu target (UTC): 2026-10-28 06:45:00
-
---- log broker: baris penolakan koneksi (10 terakhir) ---
-1793168008: New client connected from 127.0.0.1:60084 as kabita-backend (p2, c1, k30, u'kabita_device').
-1793169483: Client nmap disconnected, not authorised.
-1793169486: Client nmapdatzutgvcfhmrser disconnected, not authorised.
-1793169622: Client nmap disconnected, not authorised.
-1793169623: Client nmaphgrwsfudvseknklu disconnected, not authorised.
-1793169898: Client auto-C5E4C090-E345-66A3-3C50-8CBC0288C9AE disconnected, not authorised.
-1793169898: Client auto-A80A58B2-E5EF-F5C1-9091-B5FCD3F9E0C0 disconnected, not authorised.
-1793169898: Client auto-50D57EB1-7246-E06C-59ED-9BCCDCC1A749 disconnected, not authorised.
-1793169898: Client auto-0CEDD5DC-F133-B126-DFEE-945AA7B01C29 disconnected, not authorised.
-1793169898: Client auto-92DD1CEB-8D1C-20D2-E276-1244A72AB040 disconnected, not authorised.
-
---- konfigurasi autentikasi broker ---
-listener 1883 0.0.0.0
-allow_anonymous false
-password_file /etc/mosquitto/passwd
-
---- backend: ada pesan MQTT yang diproses dalam 15 menit terakhir? ---
-(kosong = tidak ada pesan yang sampai ke processReading)
-
---- jumlah baris bobot_log untuk tag RFID-999 ---
-0
+KESIMPULAN
+------------------------------------------------------------------------------
+Ketiga upaya tanpa kredensial sah — publish anonim, subscribe anonim, dan pasangan user/password karangan —
+ditolak broker dengan "Connection Refused: not authorised" (kode keluar 5). Log broker mencatat setiap
+penolakan, dan jumlah baris bobot_log tidak bertambah sehingga tidak ada data yang masuk. Kesimpulan:
+allow_anonymous=false dan password_file bekerja; penyerang tanpa kredensial tidak dapat menulis maupun
+membaca data sensor. Penolakan ini hanya terlihat di log broker, bukan sebagai alert IDS.

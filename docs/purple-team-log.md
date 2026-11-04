@@ -16,6 +16,31 @@ Catatan kondisi awal: seluruh serangan dijalankan terhadap Target Node yang **su
 
 ---
 
+## Eksekusi ulang 2026-11-04 (data yang kini dipakai di berkas bukti)
+
+Kelima skenario dijalankan ulang pada **4 November 2026, 14:55–15:20 UTC** dan berkas bukti
+`docs/redteam/evidence/skenarioN-serang.txt` sudah ditulis ulang mengikuti hasil ini, dengan format
+**perintah → output → kesimpulan** (tanpa kalimat "sesuai panduan"). Angka kunci:
+
+| Skenario | Waktu (UTC) | Hasil |
+|---|---|---|
+| 1 Recon | 15:01:25 (144 s) | 80, 1883, 2222 terbuka; 443 closed; 22/5432/8080 filtered; 65.531 filtered |
+| 2 Brute force | 15:05:17 | Hydra berhenti sebelum 1 percobaan; 8 login gagal → fail2ban ban 192.168.4.100 (600 s) |
+| 3 SQLi | 14:55:26 (14 s) | 4 payload manual → 400; sqlmap 1.295 request → *not injectable*; log DB bersih |
+| 4 MQTT anon | 14:55:41 | 3 upaya ditolak `not authorised`; `bobot_log` tetap 60 baris |
+| 5 MQTT bocor | 14:55:45 | 9999 ditolak aplikasi; 299 & 0,1 tersimpan; topic liar diterima; 20 pesan tanpa throttle; **60 → 83 baris** |
+
+**Hasil pantauan sisi deteksi (bukan penilaian Blue Team):** Security Onion **tidak mencatat satu pun alert**
+selama kelima skenario. Squert pada interval `2026-11-04 00:00:00–23:59:59` menunjukkan *queued 0 / total
+events 0 / total signatures -* tanpa filter objek maupun sensor. Penyebab terlihat di sensor: berkas
+`snort.unified2` terakhir 0 byte bertanggal 19 Jun 2020, **0 berkas unified2 baru sejak 1 Nov 2026**, dan
+proses `snort` tidak lagi dijumpai (hanya `barnyard2`). Artinya pipeline alert belum menulis apa pun —
+detail dan screenshot: `docs/redteam/evidence/security-onion-hasil-pemeriksaan.txt`,
+`security-onion-squert-0-event.png`, `security-onion-pipeline-ids.png`.
+Perbaikan pipeline ini menjadi prasyarat seluruh tahap **Deteksi** di bawah.
+
+---
+
 ## Skenario 1 — Reconnaissance (nmap)
 
 **Serang** — `nmap -sV -O -p- 192.168.4.5` dari Kali (192.168.4.100), selesai dalam 163 detik.
