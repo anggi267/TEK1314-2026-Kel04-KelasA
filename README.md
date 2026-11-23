@@ -46,7 +46,7 @@ ter-harden (8/8 kontrol A.1–C.3):
 | 1 | Reconnaissance (`nmap -p-`) | 3 port terbuka: 80/nginx, 1883/mqtt, 2222/ssh. 443 *closed*, 22/5432/8080 *filtered*, 65.531 port filtered | Tertahan |
 | 2 | Brute-force SSH (Hydra) | Hydra berhenti **sebelum satu percobaan** (`method reply 4`); 8 login akun gagal → fail2ban ban 600 s | Tertahan |
 | 3 | SQL injection (sqlmap) | 4 payload manual → 400; 1.295 request → *not injectable*; `log_statement` PostgreSQL bersih | Tertahan |
-| 4 | MQTT tanpa kredensial | 3 upaya ditolak `not authorised`; `bobot_log` tetap 60 baris | Tertahan |
+| 4 | MQTT tanpa kredensial | 3 upaya ditolak `not authorised`; `bobot_log` tidak bertambah | Tertahan |
 | 5 | MQTT kredensial bocor | 299 kg & 0,1 kg tersimpan; topik liar diterima; 20 pesan < 1 s tanpa throttle; **60 → 83 baris** | **Berhasil dieksploitasi** |
 | — | Deteksi (Security Onion) | **0 alert** untuk seluruh rangkaian serangan | **Gagal** |
 

@@ -21,7 +21,7 @@ kontrol baru C.4** dan **dua kebutuhan D.1–D.2** yang belum dieksekusi (lihat 
 | B.3 | Service & Attack Surface | PostgreSQL `listen_addresses=localhost`, akun default bersih | Selesai | **Skenario 1** — 5432 dan 8080 berstatus *filtered*, tidak terjangkau dari segmen lab | `evidence/b3-ss-tlnp.txt`, `b3-pg-roles.txt` |
 | C.1 | Data & Application | Kredensial DB via `.env` (mode 600), tidak hardcode | Selesai | Tidak diuji langsung — tetapi **menjadi jalur masuk Skenario 5** (kredensial MQTT dibaca dari berkas ini) | `evidence/c1-env-permissions.txt` |
 | C.2 | Data & Application | Validasi input (`tag_rfid`, `berat_kg`, `:id`) + parameterized query | Selesai | **Skenario 3** — 4 payload manual → 400; 1.295 request sqlmap → *not injectable*; `log_statement` bersih | `evidence/c2-sqli-probe-400.txt`, `redteam/evidence/skenario3-serang.txt` |
-| C.3 | Data & Application | Least-privilege DB user + logging query mencurigakan | Selesai | **Skenario 4** — 3 upaya anonim ditolak `not authorised`; `bobot_log` tetap 60 baris | `evidence/b3-pg-roles.txt`, `c3-log_statement.txt`, `c3-log-sample.txt` |
+| C.3 | Data & Application | Least-privilege DB user + logging query mencurigakan | Selesai | **Skenario 4** — 3 upaya anonim ditolak `not authorised`; `bobot_log` tidak bertambah | `evidence/b3-pg-roles.txt`, `c3-log_statement.txt`, `c3-log-sample.txt` |
 
 ## Kandidat kontrol baru (C.4) — dirancang, belum dieksekusi
 

@@ -91,6 +91,12 @@ psql -h 127.0.0.1 -c "select id, berat_kg, dicatat_pada from bobot_log order by 
 > "Sebelum serangan, tabel bobot_log berisi 60 baris. Angka ini akan kita bandingkan lagi setelah serangan
 > untuk mengukur dampaknya secara kuantitatif."
 
+> **Catatan kejujuran data (penting untuk narasi bila ditanya dosen):** 60 baris itu **sudah tercemar** dua
+> gelombang uji sebelumnya — 13 baris riwayat sah ditambah 21 baris dari 28 Oktober dan 21 baris dari 4 November
+> 14:53. Jadi 60 bukan baseline bersih. Setelah sanitasi menyeluruh, tabel bersih berisi **14 baris** (13 riwayat
+> sah + 1 baris 99 kg pada 2 Nov yang tidak cocok dengan pola serangan dan sengaja dipertahankan). Yang benar-benar
+> penting untuk video adalah **delta** pada satu kali eksekusi: +23 baris dalam satu run, bukan angka absolutnya.
+
 ---
 
 ### 01:20 – 02:20 · TAHAP 1 — Serangan (rekaman terminal Kali)
@@ -190,12 +196,12 @@ sudo journalctl -u kabita-backend --since '-10 min' | grep -i mqtt | tail -6
 
 ```bash
 psql -h 127.0.0.1 -tAc 'select count(*) from bobot_log'
-psql -h 127.0.0.1 -c "select id, berat_kg, to_char(dicatat_pada,'HH24:MI:SS') as jam \
+psql -h 127.0.0.1 -c "select id, kambing_id, berat_kg, to_char(dicatat_pada,'HH24:MI:SS') as jam \
   from bobot_log where berat_kg >= 250 or berat_kg <= 1 order by id desc limit 6"
 psql -h 127.0.0.1 -tAc 'select count(*) from bobot_log where berat_kg > 300'
 ```
 
-**Teks di layar:** "60 → 83 baris · id 61 = 299 kg · id 62 = 0,1 kg · berat > 300 kg: 0"
+**Teks di layar:** "60 → 83 baris · 0 baris > 300 kg · 299 kg & 0,1 kg tersimpan"
 
 **Narasi:**
 > "Dampaknya terukur: tabel bertambah dari 60 menjadi 83 baris. Ada validasi rentang nol sampai tiga ratus
@@ -233,20 +239,30 @@ sudo systemctl restart mosquitto
 **Teks di layar:** "C.4a — kabita_device dibatasi ke kabita/readings saja"
 
 **Shot 3 — sanitasi data (bila dijalankan):**
-```bash
-psql -h 127.0.0.1 -c "select id, berat_kg, dicatat_pada from bobot_log where id between 61 and 83 order by id" \
-  > /tmp/data_palsu_skenario5.txt
-psql -h 127.0.0.1 -c "delete from bobot_log where id between 61 and 83 returning id, berat_kg"
-psql -h 127.0.0.1 -tAc 'select count(*) from bobot_log'
-```
 
-**Teks di layar:** "DELETE 23 · sisa 60 baris"
+> **Catatan penting sebelum merekam:** kueri `id BETWEEN 61 AND 83` di bawah **basi** — pada 4 November 2026
+> baris anomali berada di id 39, 61, dan 62, bukan 61–83, dan sebagian sudah dihapus. Untuk merekam segmen ini,
+> pakai kriteria berbasis waktu yang mencakup ketiga gelombang serangan (lihat
+> `docs/blueteam/evidence/skenario5-sanitasi-database.txt`):
+>
+> ```bash
+> # dump dulu, jangan pernah hapus tanpa mencatat
+> sudo -u postgres psql -d kabita_db -c "copy (select id, kambing_id, berat_kg, dicatat_pada from bobot_log order by id) to '/tmp/bobot_log_dump.csv' with csv header"
+> # hapus tiga gelombang yang terdokumentasi
+> sudo -u postgres psql -d kabita_db -c "delete from bobot_log where id between 16 and 36 or id between 40 and 60 or id between 63 and 83 returning id"
+> sudo -u postgres psql -d kabita_db -c "select count(*) from bobot_log"
+> ```
+>
+> `kabita_app` **tidak punya hak DELETE** pada `bobot_log` (hanya INSERT/SELECT/UPDATE) — penghapusan harus
+> lewat role `postgres`. Ini kontrol least-privilege yang bekerja sesuai rancangan, dan layak disebut di narasi.
+
+**Teks di layar:** "77 → 14 baris · 0 nilai mustahil tersisa · layanan tetap active"
 
 **Narasi:**
 > "Mitigasi yang kami terapkan: rotasi kredensial yang bocor, sinkronisasi ke berkas env backend, lalu ACL
 > topik supaya akun perangkat hanya bisa menulis ke topik readings. Data uji yang masuk kami catat dulu ke
-> berkas bukti, baru dihapus, sehingga tabel kembali ke 60 baris. Untuk validasi kewajaran nilai dan rate
-> limit, kami tampilkan rancangannya sebagai kontrol C.4b dan C.4c."
+> berkas bukti, baru dihapus, sehingga tabel kembali ke keadaan sebelum insiden. Untuk validasi kewajaran nilai
+> dan rate limit, kami tampilkan rancangannya sebagai kontrol C.4b dan C.4c."
 
 ---
 

@@ -30,7 +30,7 @@ Kelima skenario dijalankan ulang pada **4 November 2026, 14:55–15:20 UTC** dan
 | 1 Recon | 15:01:25 (144 s) | 80, 1883, 2222 terbuka; 443 closed; 22/5432/8080 filtered; 65.531 filtered |
 | 2 Brute force | 15:05:17 | Hydra berhenti sebelum 1 percobaan; 8 login gagal → fail2ban ban 192.168.4.100 (600 s) |
 | 3 SQLi | 14:55:26 (14 s) | 4 payload manual → 400; sqlmap 1.295 request → *not injectable*; log DB bersih |
-| 4 MQTT anon | 14:55:41 | 3 upaya ditolak `not authorised`; `bobot_log` tetap 60 baris |
+| 4 MQTT anon | 14:55:41 | 3 upaya ditolak `not authorised`; `bobot_log` tidak bertambah |
 | 5 MQTT bocor | 14:55:45 | 9999 ditolak aplikasi; 299 & 0,1 tersimpan; topic liar diterima; 20 pesan tanpa throttle; **60 → 83 baris** |
 
 **Hasil pantauan sisi deteksi (bukan penilaian Blue Team):** Security Onion **tidak mencatat satu pun alert**
