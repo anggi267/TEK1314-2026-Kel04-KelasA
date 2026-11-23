@@ -85,9 +85,6 @@ $ journalctl -u kabita-backend --since '-20 min' | grep -Ei 'sql|query error|pq:
 
 KESIMPULAN
 ------------------------------------------------------------------------------
-Empat payload manual (OR 1=1, kutip tunggal, UNION SELECT, stacked query pg_sleep) semuanya dijawab
-400 Bad Request, sehingga tidak ada payload yang mencapai basis data. sqlmap mengirim 1.295 request pada
-hari itu (1.101 di antaranya 400) dan menyimpulkan "all tested parameters do not appear to be injectable",
+Empat payload manual (OR 1=1, kutip tunggal, UNION SELECT, stacked query pg_sleep) semuanya dijawab 400 Bad Request, sehingga tidak ada payload yang mencapai basis data. sqlmap mengirim 1.295 request pada hari itu (1.101 di antaranya 400) dan menyimpulkan "all tested parameters do not appear to be injectable",
 baik dengan penanda otomatis maupun penanda manual pada segmen path. Log backend bersih dari error query.
-Kesimpulan: endpoint riwayat tidak rentan SQL injection karena parameter id divalidasi sebagai bilangan
-bulat sebelum query dan query memakai placeholder ($1).
+Kesimpulan: endpoint riwayat tidak rentan SQL injection karena parameter id divalidasi sebagai bilangan bulat sebelum query dan query memakai placeholder ($1).

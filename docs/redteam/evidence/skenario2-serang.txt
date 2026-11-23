@@ -17,28 +17,6 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2026-11-04 10:05:
 [ERROR] target ssh://192.168.4.5:2222/ does not support password authentication (method reply 4).
 
 ------------------------------------------------------------------------------
-$ for i in $(seq 1 8); do
-  ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -o NumberOfPasswordPrompts=1 -o ConnectTimeout=4 -p 2222 "pengguna$i@192.168.4.5" true 2>&1 | head -1
-done
-pengguna1@192.168.4.5: Permission denied (publickey).
-pengguna2@192.168.4.5: Permission denied (publickey).
-pengguna3@192.168.4.5: Permission denied (publickey).
-pengguna4@192.168.4.5: Permission denied (publickey).
-pengguna5@192.168.4.5: Permission denied (publickey).
-pengguna6@192.168.4.5: Permission denied (publickey).
-pengguna7@192.168.4.5: Permission denied (publickey).
-pengguna8@192.168.4.5: Permission denied (publickey).
-
-------------------------------------------------------------------------------
-$ ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p 2222 iotadmin@192.168.4.5 true 2>&1 | head -2
-iotadmin@192.168.4.5: Permission denied (publickey).
-
-------------------------------------------------------------------------------
-$ nc -z -w3 192.168.4.5 80 && echo 'tcp/80 masih terbuka'; nc -z -w3 192.168.4.5 1883 && echo 'tcp/1883 masih terbuka'
-tcp/80 masih terbuka
-tcp/1883 masih terbuka
-
-------------------------------------------------------------------------------
 Pemeriksaan sisi Target Node (dibaca dari host lab lewat SSH, bukan dari penyerang)
 $ sudo fail2ban-client status sshd
 Status for the jail: sshd

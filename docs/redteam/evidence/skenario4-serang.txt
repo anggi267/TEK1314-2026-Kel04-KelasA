@@ -40,5 +40,4 @@ KESIMPULAN
 Ketiga upaya tanpa kredensial sah — publish anonim, subscribe anonim, dan pasangan user/password karangan —
 ditolak broker dengan "Connection Refused: not authorised" (kode keluar 5). Log broker mencatat setiap
 penolakan, dan jumlah baris bobot_log tidak bertambah sehingga tidak ada data yang masuk. Kesimpulan:
-allow_anonymous=false dan password_file bekerja; penyerang tanpa kredensial tidak dapat menulis maupun
-membaca data sensor. Penolakan ini hanya terlihat di log broker, bukan sebagai alert IDS.
+allow_anonymous=false dan password_file bekerja; penyerang tanpa kredensial tidak dapat menulis maupun membaca data sensor. Penolakan ini hanya terlihat di log broker, bukan sebagai alert IDS.
