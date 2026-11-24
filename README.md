@@ -26,7 +26,7 @@ Semua artefak diunggah **sebelum praktikum Minggu 14 dimulai**, terlepas dari se
 | Artefak | Path | Isi |
 | :--- | :--- | :--- |
 | **Incident Report final** | [`docs/final/incident_report.pdf`](docs/final/incident_report.pdf) | 8 bagian NIST SP 800-61r2, 21 halaman |
-| **Video demo Purple Team Loop** | [`docs/final/video_demo.mp4`](docs/final/video_demo.mp4) · [naskah & shot list](docs/final/video_demo_script.md) | 1 siklus penuh: serangan → deteksi → mitigasi → verifikasi |
+| **Video demo Purple Team Loop** | [`docs/final/video_demo.mp4`](docs/final/video_demo.mp4) · [skrip & naskah](<docs/final/Skrip & Naskah Video Demo Purple Team Loop — Skenario 5 (KABITA).md>) | 1 siklus penuh: serangan → deteksi → mitigasi → verifikasi |
 | **Slide presentasi final** | [`docs/presentation-final/slides.pdf`](docs/presentation-final/slides.pdf) | 12 slide landscape sesuai kisi-kisi Bagian VII |
 
 ---
