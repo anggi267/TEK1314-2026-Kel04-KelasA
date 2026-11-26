@@ -341,7 +341,7 @@ Total **12 slide**, tepat pada batas atas "maksimal 10–12 slide". Format PDF, 
   | Artefak | Path |
   | :--- | :--- |
   | Incident Report final (NIST SP 800-61r2) | `docs/final/incident_report.pdf` |
-  | Video demo Purple Team Loop | `docs/final/video_demo.mp4` |
+  | Video demo Purple Team Loop | `https://youtu.be/Qn6f1lt6bEY` (YouTube unlisted, 7:12) |
   | Slide presentasi ini | `docs/presentation-final/slides.pdf` |
   | Logbook & tautan seluruh fase | `README.md` |
 - **Isi — jejak audit lengkap:** `docs/design/` (topologi, IP plan, konfigurasi VM) · `docs/blueteam/`
