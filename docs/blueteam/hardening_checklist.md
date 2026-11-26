@@ -23,7 +23,7 @@ kontrol baru C.4** dan **dua kebutuhan D.1–D.2** yang belum dieksekusi (lihat 
 | C.2 | Data & Application | Validasi input (`tag_rfid`, `berat_kg`, `:id`) + parameterized query | Selesai | **Skenario 3** — 4 payload manual → 400; 1.295 request sqlmap → *not injectable*; `log_statement` bersih | `evidence/c2-sqli-probe-400.txt`, `redteam/evidence/skenario3-serang.txt` |
 | C.3 | Data & Application | Least-privilege DB user + logging query mencurigakan | Selesai | **Skenario 4** — 3 upaya anonim ditolak `not authorised`; `bobot_log` tidak bertambah | `evidence/b3-pg-roles.txt`, `c3-log_statement.txt`, `c3-log-sample.txt` |
 
-## Kandidat kontrol baru (C.4) — dirancang, belum dieksekusi
+## Kandidat kontrol baru (C.4) — C.4a sudah dieksekusi 26 Nov 2026
 
 Muncul dari Skenario 5, satu-satunya jalur yang berhasil dieksploitasi. Ketiga butir di bawah menutup
 **asumsi tersembunyi** bahwa kredensial selalu tetap rahasia — asumsi yang gugur saat kredensial `kabita_device`
@@ -31,13 +31,17 @@ diambil dari `/opt/kabita-backend/.env`.
 
 | # | Kontrol | Menutup | Status |
 |---|---|---|---|
-| C.4a | **ACL topik Mosquitto** — `acl_file /etc/mosquitto/acl` berisi `user kabita_device` / `topic write kabita/readings` / `topic read kabita/readings`, sehingga publish ke topik liar (`kabita/sensor-liar`) ditolak broker | Publish ke topik yang tidak dipakai aplikasi | Belum |
-| C.4b | **Validasi kewajaran nilai** — perketat `berat_kg` ke rentang biologis wajar (mis. 5–150 kg) dan/atau tandai nilai di luar kewajaran sebagai anomali alih-alih menerimanya sebagai data sah | Tersimpannya 299 kg dan 0,1 kg sebagai bobot kambing yang "sah" | Belum |
+| C.4a | **ACL topik Mosquitto** — `acl_file /etc/mosquitto/acl` berisi `user kabita_device` / `topic write kabita/readings` / `topic read kabita/readings`, sehingga publish ke topik liar (`kabita/sensor-liar`) ditolak broker | Publish ke topik yang tidak dipakai aplikasi | **Selesai — 26 Nov 2026 03:22 UTC.** Berkas ACL 221 byte (`root:mosquitto` 640), `acl_file` dirujuk di `mosquitto.conf:14`. Verifikasi: publish ke `kabita/sensor-liar` dengan kredensial **sah** tetap `Connection Refused: not authorised` |
+| C.4b | **Validasi kewajaran nilai** — perketat `berat_kg` ke rentang biologis wajar (mis. 5–150 kg) dan/atau tandai nilai di luar kewajaran sebagai anomali alih-alih menerimanya sebagai data sah | Tersimpannya 299 kg dan 0,1 kg sebagai bobot kambing yang "sah" | Belum — **terbukti masih bocor** pada uji ulang 26 Nov 02:51 UTC (`id 85` = 299,00 kg, `id 86` = 0,10 kg tersimpan) |
 | C.4c | **Pembatasan laju publish** per klien/topik | 20 pesan terkirim dalam < 1 detik tanpa penolakan | Belum |
 
 Ditambah satu tindakan **containment** yang bersifat situasional (bukan kontrol permanen): rotasi kredensial
 `kabita_device` ke nilai acak kuat 24 byte base64, sinkronisasi `MQTT_PASSWORD` di `.env`, lalu restart
-`mosquitto` dan `kabita-backend`.
+`mosquitto` dan `kabita-backend`. **Sudah dijalankan 26 November 2026 03:22 UTC** — `/etc/mosquitto/passwd`
+bertanggal 03:22:01, backend restart 03:23:37, dan kredensial lama kini ditolak `not authorised`.
+
+**Batas keberhasilan C.4a:** ACL hanya menutup jalur topik liar. Jalur `kabita/readings` tetap menerima nilai
+mustahil sampai C.4b dieksekusi — jadi skenario 5 belum tertutup seluruhnya.
 
 ## Kebutuhan visibilitas (D.1–D.2) — prasyarat, belum dieksekusi
 

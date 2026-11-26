@@ -25,8 +25,8 @@ Semua artefak diunggah **sebelum praktikum Minggu 14 dimulai**, terlepas dari se
 
 | Artefak | Path | Isi |
 | :--- | :--- | :--- |
-| **Incident Report final** | [`docs/final/incident_report.pdf`](docs/final/incident_report.pdf) | 8 bagian NIST SP 800-61r2, 21 halaman |
-| **Video demo Purple Team Loop** | [`docs/final/video_demo.mp4`](docs/final/video_demo.mp4) | 1 siklus penuh: serangan → deteksi → mitigasi → verifikasi |
+| **Incident Report final** | [`docs/final/incident_report.pdf`](docs/final/incident_report.pdf) · [versi `.docx`](docs/final/incident_report.docx) | 8 bagian NIST SP 800-61r2, 23 halaman |
+| **Video demo Purple Team Loop** | [`docs/final/video_demo.mp4`](docs/final/video_demo.mp4) — 7 menit 12 detik | 1 siklus penuh: serangan → deteksi → mitigasi → verifikasi |
 | **Slide presentasi final** | [`docs/presentation-final/slides.pdf`](docs/presentation-final/slides.pdf) | 12 slide landscape sesuai kisi-kisi Bagian VII |
 
 ---
@@ -139,8 +139,8 @@ slide presentasi 12 halaman, video demo siklus Purple Team Loop, dan pembaruan R
 | Bukti eksekusi serangan | selesai, eksekusi ulang 4 Nov 2026 | `docs/redteam/evidence/` |
 | Purple team log | selesai, 5 tahap × 5 skenario | `docs/purple-team-log.md` |
 | Diagnostik pipeline IDS | selesai, akar masalah teridentifikasi | `docs/redteam/evidence/security-onion-*` |
-| **Incident Report final** | **selesai** | `docs/final/incident_report.pdf` |
-| **Video demo Purple Team Loop** | **selesai** | `docs/final/video_demo.mp4` |
+| **Incident Report final** | **selesai** | `docs/final/incident_report.pdf` · versi Word: `docs/final/incident_report.docx` |
+| **Video demo Purple Team Loop** | **selesai** — 7:12, 1858×1080, H.264/AAC | `docs/final/video_demo.mp4` (78 MB) |
 | **Slide presentasi final** | **selesai** | `docs/presentation-final/slides.pdf` |
 | **README final** | **selesai** | dokumen ini |
 

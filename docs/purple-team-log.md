@@ -233,21 +233,29 @@ anomali, rate limit publish, dan otorisasi topic per-user. Karena kredensialnya 
 tidak dapat dijadikan andalan; satu-satunya pertahanan untuk kasus *credential theft* adalah validasi
 nilai di aplikasi + pembatasan hak kredensial (topic ACL, rate limit).
 
-**Respons** — _[RANCANGAN — belum dieksekusi, kandidat kontrol C.4]_
-(a) **C.4a — ACL topik:** `/etc/mosquitto/acl` berisi `user kabita_device` / `topic write kabita/readings` /
-`topic read kabita/readings`, diaktifkan dengan `acl_file /etc/mosquitto/acl` di `mosquitto.conf`.
+**Respons** — _[SELESAI SEBAGIAN — C.4a + rotasi dieksekusi 26 Nov 2026 03:22 UTC; C.4b/C.4c masih rancangan]_
+(a) **C.4a — ACL topik, SUDAH DIJALANKAN.** `/etc/mosquitto/acl` (221 byte, `root:mosquitto` 640) berisi
+`user kabita_device` / `topic write kabita/readings` / `topic read kabita/readings`, diaktifkan dengan
+`acl_file /etc/mosquitto/acl` di `/etc/mosquitto/mosquitto.conf` baris 14. `mosquitto` direstart 03:22.
 (b) **C.4b — validasi kewajaran nilai:** perketat `berat_kg` ke rentang biologis (mis. 5–150 kg) dan/atau
-tandai nilai di luar rentang wajar sebagai anomali alih-alih menolak mentah.
-(c) **C.4c — rate limit publish** per klien/topik.
-Ditambah **containment**: rotasi kredensial `kabita_device` (24 byte base64 via `mosquitto_passwd`),
-sinkronisasi `MQTT_PASSWORD` di `/opt/kabita-backend/.env`, restart `mosquitto` + `kabita-backend`.
-Bukti before/after yang harus disimpan: `docs/blueteam/evidence/skenario5-respons-*.txt`.
+tandai nilai di luar rentang wajar sebagai anomali. **Belum dieksekusi** — uji ulang 26 Nov 02:51 UTC
+membuktikan celah ini masih terbuka (`id 85` = 299,00 kg dan `id 86` = 0,10 kg tersimpan).
+(c) **C.4c — rate limit publish** per klien/topik. **Belum dieksekusi.**
+Ditambah **containment yang sudah dijalankan**: rotasi kredensial `kabita_device` (24 byte base64 via
+`mosquitto_passwd`, `/etc/mosquitto/passwd` bertanggal 03:22:01), sinkronisasi `MQTT_PASSWORD` di
+`/opt/kabita-backend/.env`, restart `mosquitto` + `kabita-backend` (backend aktif kembali 03:23:37).
 
-**Verifikasi** — _[BELUM — menunggu eksekusi mitigasi]_ Kriteria lulus yang harus dibuktikan:
-(1) publish `299` dan `9999` ditolak atau ditandai; (2) publish `21,5` tetap diterima — tidak boleh ada
-false positive yang memutus operasi normal; (3) publish dengan **kredensial lama** ditolak broker setelah
-rotasi; (4) publish ke `kabita/sensor-liar` ditolak ACL; (5) `select count(*) from bobot_log` kembali **60**
-setelah sanitasi 23 baris palsu (id 61–83) yang ID-nya dicatat lebih dulu ke berkas bukti.
+**Verifikasi** — _[SEBAGIAN TUNTAS — 3 dari 5 kriteria terbukti, 26 Nov 2026]_
+(1) publish `299` ditolak/ditandai — **BELUM**, masih tersimpan karena C.4b belum ada; `9999` sudah ditolak
+backend sejak awal (`invalid berat_kg`).
+(2) publish `21,5` tetap diterima — **diterima broker** (tanpa galat), tetapi penyimpanan **belum terbukti**:
+payload pada rekaman terpotong dan `journalctl --since "2 min ago"` kosong.
+(3) publish dengan **kredensial lama** → **TUNTAS**: `Connection Refused: not authorised`.
+(4) publish ke `kabita/sensor-liar` dengan kredensial **sah** → **TUNTAS**: tetap `not authorised`, artinya
+penolakan terjadi di lapisan ACL, bukan autentikasi.
+(5) sanitasi data uji → **TUNTAS untuk gelombang 28 Okt & 4 Nov** (77 → 14 baris,
+`docs/blueteam/evidence/skenario5-sanitasi-database.txt`), **tetapi ada baris baru** dari uji ulang 26 Nov
+(`id 85`, `86`, `87`) yang belum dihapus.
 
 ---
 
@@ -257,9 +265,11 @@ setelah sanitasi 23 baris palsu (id 61–83) yang ID-nya dicatat lebih dulu ke b
    aktif untuk IP `192.168.4.100` (`addr-set-sshd`), tetapi hanya pada `tcp dport 2222` sehingga tidak
    menghalangi Skenario 3–5. Ban sudah habis dengan sendirinya; untuk uji ulang Skenario 2 penyerang
    hanya perlu memastikan IP-nya tidak sedang terblokir.
-2. **Data uji Skenario 5 masih ada di `bobot_log`** (23 baris palsu untuk tag `RFID-002`).
-   Itu bukti dampak; bersihkan setelah Blue Team selesai mendokumentasikan, dengan
-   `DELETE FROM bobot_log WHERE id IN (…)` (catat id-nya di evidence sebelum dihapus).
+2. **Data uji Skenario 5 perlu sanitasi susulan.** Gelombang 28 Okt dan 4 Nov sudah dihapus (77 → 14 baris).
+   Uji ulang 26 November 2026 pukul 02:51–02:52 UTC menambahkan baris baru — terlihat di rekaman:
+   `id 85` = 299,00 kg, `id 86` = 0,10 kg, `id 87` = 50,00 kg — dan **belum dihapus**. Bersihkan dengan
+   prosedur yang sama: dump dulu, lalu `DELETE ... WHERE id IN (85, 86, 87)` (atau rentang yang tepat setelah
+   dicek), dan catat hasilnya di `docs/blueteam/evidence/`.
 3. **Kredensial MQTT disensor** di berkas evidence (`***kredensial-lab-disensor***`).
 4. Tahap Deteksi wajib dijalankan **pada rentang waktu yang sama** dengan serangan (timestamp UTC
    sudah dicantumkan di tiap subbagian di atas) — bukan rekonstruksi dari log sesudahnya.
