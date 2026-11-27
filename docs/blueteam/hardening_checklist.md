@@ -63,22 +63,30 @@ Bukti diambil langsung dari console VM Target Node (tty1) pada 27 November 2026,
 berbarengan dengan keluarannya. Berkas `.txt` di folder yang sama tetap dipertahankan sebagai bukti
 teks asli dari eksekusi Oktober 2026.
 
-| Kontrol | Screenshot | Isi |
-|---|---|---|
-| A.1 | `evidence/before A. Access & Authentication.jpeg` | kondisi `sshd_config` sebelum hardening |
-| A.1 | `evidence/a1-sshd_config-after.png` | `Port 2222`, `PermitRootLogin no`, `PasswordAuthentication no`, `PubkeyAuthentication yes` |
-| A.1 | `evidence/a1-login-password-rejected.png` | percobaan login dengan password → `Permission denied`, `exit=255` |
-| A.2 | `evidence/a2-fail2ban-jail.png` | `fail2ban-client status sshd` + isi `jail.local` (port 2222, maxretry 5, bantime 600) |
-| B.1 | `evidence/b1-ufw-status.png` | `ufw status verbose`: default deny incoming, 2222/80/443/1883 allow, 22 deny |
-| B.2 | `evidence/b2-services-after.png` | jumlah service berjalan + `ModemManager`/`unattended-upgrades` |
-| B.2 | `evidence/b2-unattended-upgrades.png` | `20auto-upgrades`: Update-Package-Lists & Unattended-Upgrade `"1"` |
-| B.3 | `evidence/b3-ss-tlnp.png` | `ss -tlnp`: 5432 hanya `127.0.0.1`, 8080 hanya loopback |
-| C.1 | `evidence/c1-env-permissions.png` | `.env` mode `600 kabita:kabita` + potongan `os.Getenv(...)` di `main.go` |
-| C.2 | `evidence/c2-validasi-kode.png` | regex `tag_rfid` + rentang `0 < berat_kg ≤ 300` di `processReading` |
-| C.3 | `evidence/c3-log-statement.png` | `SHOW log_statement` → `mod` |
-| C.3 | `evidence/c3-pg-roles.png` | `pg_roles`: `kabita_app` & `kabita_device` bukan superuser |
-| C.4a | `evidence/c4a-acl-isi.png` | isi `/etc/mosquitto/acl` + `acl_file` di `mosquitto.conf:14` |
-| C.4a | `evidence/c4a-verifikasi-akhir.png` | publish ke `kabita/readings` diterima backend; publish ke `kabita/sensor-liar` → `Not authorized` |
+| Kontrol | Bukti yang diminta panduan | Screenshot | Isi |
+|---|---|---|---|
+| A.1 | sshd_config before/after | `before A. Access & Authentication.jpeg`, `a1-sshd_config-after.png` | sebelum vs `Port 2222`, `PermitRootLogin no`, `PasswordAuthentication no` |
+| A.1 | percobaan login password gagal | `a1-login-password-rejected.png` | `Permission denied (pubkey)`, `exit=255` |
+| A.2 | jail fail2ban aktif | `a2-fail2ban-jail.png` | `fail2ban-client status sshd` + `jail.local` (port 2222, maxretry 5, bantime 600) |
+| A.2 | log IP yang diblokir | `a2-fail2ban-ban-attacker.txt` **(teks, bukan screenshot)** + `a2-fail2ban-self-ignored.png` | Ban `192.168.4.100` dari eksekusi 23 Okt. Uji ulang dari VM sendiri **tidak bisa memicu ban** karena rule `ignoreself` — log menunjukkan `Ignore 192.168.4.5 by ignoreself rule` |
+| B.1 | `ufw status verbose` | `b1-ufw-status.png` | default deny incoming, 2222/80/443/1883 allow, 22 deny |
+| B.2 | services before/after + unattended-upgrades | `b2-services-after.png`, `b2-modemmanager.png`, `b2-unattended-upgrades.png` | 25 service berjalan; `ModemManager` `disabled`/`inactive`; `unattended-upgrades` `enabled`/`active` |
+| B.3 | nmap before/after, 5432 tidak terbuka | `b3-nmap.png`, `b3-ss-tlnp.png` | `nmap -p 22,80,443,1883,5432,8080 192.168.4.5` → hanya 80 & 1883 `open`; 5432 & 8080 `closed`. `ss -tlnp`: 5432 hanya `127.0.0.1` |
+| C.1 | snippet kode, secret disensor | `c1-env-disensor.png`, `c1-env-permissions.png` | `.env` dengan nilai diganti `<disensor>`, mode `600 kabita:kabita`, plus `os.Getenv` di `main.go` |
+| C.2 | snippet validasi + request ditolak | `c2-validasi-kode.png`, `c2-request-ditolak.png` | regex `tag_rfid` + `0 < berat_kg ≤ 300`; `POST /api/v1/readings` `berat_kg=9999` → `HTTP 400`; `1 OR 1=1` → `HTTP 400` |
+| C.3 | `\du` + contoh log query | `c3-pg-roles.png`, `c3-log-statement.png`, `c3-log-sample.png` | `pg_roles`: tidak ada superuser aplikasi; `log_statement` = `mod`; log merekam `statement: UPDATE kambing …` |
+| C.4a | isi ACL + verifikasi | `c4a-acl-isi.png`, `c4a-verifikasi-akhir.png` | `topic readwrite kabita/readings`; topik liar → `Not authorized`; publish sah sampai ke backend |
+
+**Tiga bukti yang belum bisa berbentuk screenshot** (dan alasannya):
+
+1. **A.2 log ban** — fail2ban punya rule `ignoreself`, jadi percobaan login dari VM ke dirinya sendiri
+   diabaikan (`Ignore 192.168.4.5 by ignoreself rule`). Butuh Attacker Node (Kali) yang console-nya
+   tidak menampilkan output saat dicek 27 Nov. Bukti ban asli tetap ada di `a2-fail2ban-ban-attacker.txt`.
+2. **B.3 nmap "before"** — kondisi sebelum hardening (5432 terbuka) tidak dapat direproduksi karena
+   konfigurasi sudah diubah; data before ada di `docs/design/` dan `redteam/evidence/skenario1-serang.txt`.
+   `b3-nmap.png` adalah kondisi **after**.
+3. **B.2 services "before"** — sama, hanya kondisi akhir yang dapat diambil; `b2-services-after.png` +
+   `b2-modemmanager.png` menunjukkan hasil akhirnya (`ModemManager` nonaktif).
 
 ## Kebutuhan visibilitas (D.1–D.2) — prasyarat, belum dieksekusi
 
