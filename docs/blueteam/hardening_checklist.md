@@ -31,8 +31,8 @@ diambil dari `/opt/kabita-backend/.env`.
 
 | # | Kontrol | Menutup | Status |
 |---|---|---|---|
-| C.4a | **ACL topik Mosquitto** — `acl_file /etc/mosquitto/acl` berisi `user kabita_device` / `topic write kabita/readings` / `topic read kabita/readings`, sehingga publish ke topik liar (`kabita/sensor-liar`) ditolak broker | Publish ke topik yang tidak dipakai aplikasi | **Selesai — 26 Nov 2026 03:22 UTC.** Berkas ACL 221 byte (`root:mosquitto` 640), `acl_file` dirujuk di `mosquitto.conf:14`. Verifikasi: publish ke `kabita/sensor-liar` dengan kredensial **sah** tetap `Connection Refused: not authorised` |
-| C.4b | **Validasi kewajaran nilai** — perketat `berat_kg` ke rentang biologis wajar (mis. 5–150 kg) dan/atau tandai nilai di luar kewajaran sebagai anomali alih-alih menerimanya sebagai data sah | Tersimpannya 299 kg dan 0,1 kg sebagai bobot kambing yang "sah" | Belum — **terbukti masih bocor** pada uji ulang 26 Nov 02:51 UTC (`id 85` = 299,00 kg, `id 86` = 0,10 kg tersimpan) |
+| C.4a | **ACL topik Mosquitto** — `acl_file /etc/mosquitto/acl` (225 byte) berisi blok `user kabita_device` + `topic readwrite kabita/readings`, dan blok `user kabita_backend` + `topic read kabita/readings` (user ini **belum ada** di `/etc/mosquitto/passwd`, jadi bloknya masih no-op) | Publish ke topik yang tidak dipakai aplikasi | **Selesai — 26 Nov 2026 03:22 UTC, diperbaiki 27 Nov 2026.** `acl_file` dirujuk di `mosquitto.conf:14`; kepemilikan `mosquitto:mosquitto` mode 640. Verifikasi: publish ke `kabita/sensor-liar` dengan kredensial **sah** → `Warning: Publish 1 failed: Not authorized` (MQTT5, QoS 1) — `evidence/c4a-acl-isi.png`, `c4a-verifikasi-akhir.png` |
+| C.4b | **Validasi kewajaran nilai** — perketat `berat_kg` ke rentang biologis wajar (mis. 5–150 kg) dan/atau tandai nilai di luar kewajaran sebagai anomali alih-alih menerimanya sebagai data sah | Tersimpannya 299 kg dan 0,1 kg sebagai bobot kambing yang "sah" | Belum. Dasar: kode `processReading` masih `0 < berat_kg ≤ 300` (`c2-validasi-kode.png`) dan jalur `kabita/readings` terbukti masih menerima publish pasca-ACL (`c4a-verifikasi-akhir.png`, publish 9999 sampai ke backend). Baris `id 85`/`86` dari 26 Nov **02:51 UTC** masuk **sebelum** ACL dipasang 03:22 — jadi itu bukan bukti pasca-mitigasi |
 | C.4c | **Pembatasan laju publish** per klien/topik | 20 pesan terkirim dalam < 1 detik tanpa penolakan | Belum |
 
 Ditambah satu tindakan **containment** yang bersifat situasional (bukan kontrol permanen): rotasi kredensial
@@ -40,8 +40,45 @@ Ditambah satu tindakan **containment** yang bersifat situasional (bukan kontrol 
 `mosquitto` dan `kabita-backend`. **Sudah dijalankan 26 November 2026 03:22 UTC** — `/etc/mosquitto/passwd`
 bertanggal 03:22:01, backend restart 03:23:37, dan kredensial lama kini ditolak `not authorised`.
 
+**Bug C.4a yang ditemukan dan diperbaiki 27 November 2026.** Aturan awal hanya memberi
+`topic write kabita/readings` kepada `kabita_device`, padahal backend memakai **kredensial yang sama**
+(`MQTT_USER=kabita_device` di `.env`) untuk *subscribe*. Akibatnya ACL memutus subscriber-nya sendiri:
+publish berhasil (`exit 0`) tetapi tidak ada `reading` yang diproses — `journalctl -u kabita-backend`
+kosong, tidak ada galat apa pun. Diperbaiki menjadi `topic readwrite kabita/readings`; ingest pulih
+(publish `berat_kg: 9999` → backend mencatat `mqtt: gagal proses reading … invalid berat_kg`).
+Pemisahan hak device vs backend belum dilakukan — perlu user `kabita_backend` di `/etc/mosquitto/passwd`
+dan `MQTT_USER` di `.env` diganti; selama belum, blok `user kabita_backend` di ACL tidak berefek.
+
 **Batas keberhasilan C.4a:** ACL hanya menutup jalur topik liar. Jalur `kabita/readings` tetap menerima nilai
 mustahil sampai C.4b dieksekusi — jadi skenario 5 belum tertutup seluruhnya.
+
+> **Catatan metodologi verifikasi ACL.** `mosquitto_pub` tetap keluar `exit 0` walaupun broker menolak.
+> Dengan MQTT 3.1.1 pesan dibuang tanpa pesan galat; dengan `-V mqttv5 -q 1` barulah muncul
+> `Warning: Publish 1 failed: Not authorized.` Karena itu bukti penolakan ACL tidak boleh berhenti pada
+> exit code — lihat `evidence/c4a-verifikasi-akhir.png`.
+
+## Bukti screenshot per kontrol (Bagian VIII panduan)
+
+Bukti diambil langsung dari console VM Target Node (tty1) pada 27 November 2026, perintah terlihat
+berbarengan dengan keluarannya. Berkas `.txt` di folder yang sama tetap dipertahankan sebagai bukti
+teks asli dari eksekusi Oktober 2026.
+
+| Kontrol | Screenshot | Isi |
+|---|---|---|
+| A.1 | `evidence/before A. Access & Authentication.jpeg` | kondisi `sshd_config` sebelum hardening |
+| A.1 | `evidence/a1-sshd_config-after.png` | `Port 2222`, `PermitRootLogin no`, `PasswordAuthentication no`, `PubkeyAuthentication yes` |
+| A.1 | `evidence/a1-login-password-rejected.png` | percobaan login dengan password → `Permission denied`, `exit=255` |
+| A.2 | `evidence/a2-fail2ban-jail.png` | `fail2ban-client status sshd` + isi `jail.local` (port 2222, maxretry 5, bantime 600) |
+| B.1 | `evidence/b1-ufw-status.png` | `ufw status verbose`: default deny incoming, 2222/80/443/1883 allow, 22 deny |
+| B.2 | `evidence/b2-services-after.png` | jumlah service berjalan + `ModemManager`/`unattended-upgrades` |
+| B.2 | `evidence/b2-unattended-upgrades.png` | `20auto-upgrades`: Update-Package-Lists & Unattended-Upgrade `"1"` |
+| B.3 | `evidence/b3-ss-tlnp.png` | `ss -tlnp`: 5432 hanya `127.0.0.1`, 8080 hanya loopback |
+| C.1 | `evidence/c1-env-permissions.png` | `.env` mode `600 kabita:kabita` + potongan `os.Getenv(...)` di `main.go` |
+| C.2 | `evidence/c2-validasi-kode.png` | regex `tag_rfid` + rentang `0 < berat_kg ≤ 300` di `processReading` |
+| C.3 | `evidence/c3-log-statement.png` | `SHOW log_statement` → `mod` |
+| C.3 | `evidence/c3-pg-roles.png` | `pg_roles`: `kabita_app` & `kabita_device` bukan superuser |
+| C.4a | `evidence/c4a-acl-isi.png` | isi `/etc/mosquitto/acl` + `acl_file` di `mosquitto.conf:14` |
+| C.4a | `evidence/c4a-verifikasi-akhir.png` | publish ke `kabita/readings` diterima backend; publish ke `kabita/sensor-liar` → `Not authorized` |
 
 ## Kebutuhan visibilitas (D.1–D.2) — prasyarat, belum dieksekusi
 

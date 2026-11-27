@@ -234,8 +234,9 @@ tidak dapat dijadikan andalan; satu-satunya pertahanan untuk kasus *credential t
 nilai di aplikasi + pembatasan hak kredensial (topic ACL, rate limit).
 
 **Respons** — _[SELESAI SEBAGIAN — C.4a + rotasi dieksekusi 26 Nov 2026 03:22 UTC; C.4b/C.4c masih rancangan]_
-(a) **C.4a — ACL topik, SUDAH DIJALANKAN.** `/etc/mosquitto/acl` (221 byte, `root:mosquitto` 640) berisi
-`user kabita_device` / `topic write kabita/readings` / `topic read kabita/readings`, diaktifkan dengan
+(a) **C.4a — ACL topik, SUDAH DIJALANKAN.** `/etc/mosquitto/acl` (225 byte, `mosquitto:mosquitto` 640) berisi
+`user kabita_device` + `topic readwrite kabita/readings`, dan blok `user kabita_backend` + `topic read
+kabita/readings` (user tersebut belum ada di `passwd`, jadi masih no-op), diaktifkan dengan
 `acl_file /etc/mosquitto/acl` di `/etc/mosquitto/mosquitto.conf` baris 14. `mosquitto` direstart 03:22.
 (b) **C.4b — validasi kewajaran nilai:** perketat `berat_kg` ke rentang biologis (mis. 5–150 kg) dan/atau
 tandai nilai di luar rentang wajar sebagai anomali. **Belum dieksekusi** — uji ulang 26 Nov 02:51 UTC
@@ -251,11 +252,19 @@ backend sejak awal (`invalid berat_kg`).
 (2) publish `21,5` tetap diterima — **diterima broker** (tanpa galat), tetapi penyimpanan **belum terbukti**:
 payload pada rekaman terpotong dan `journalctl --since "2 min ago"` kosong.
 (3) publish dengan **kredensial lama** → **TUNTAS**: `Connection Refused: not authorised`.
-(4) publish ke `kabita/sensor-liar` dengan kredensial **sah** → **TUNTAS**: tetap `not authorised`, artinya
-penolakan terjadi di lapisan ACL, bukan autentikasi.
+(4) publish ke `kabita/sensor-liar` dengan kredensial **sah** → **TUNTAS**: ditolak broker. Bukti yang sah
+adalah `Warning: Publish 1 failed: Not authorized.` dengan `-V mqttv5 -q 1` — `mosquitto_pub` tetap
+`exit 0` walau ditolak, jadi exit code tidak boleh dipakai sebagai bukti.
 (5) sanitasi data uji → **TUNTAS untuk gelombang 28 Okt & 4 Nov** (77 → 14 baris,
 `docs/blueteam/evidence/skenario5-sanitasi-database.txt`), **tetapi ada baris baru** dari uji ulang 26 Nov
 (`id 85`, `86`, `87`) yang belum dihapus.
+
+**Koreksi 27 November 2026 — ACL sempat memutus ingest.** Aturan pertama hanya memberi `topic write`,
+sedangkan backend memakai kredensial **yang sama** untuk subscribe. Akibatnya publish masuk (`exit 0`)
+tetapi backend tidak memproses apa pun: `journalctl -u kabita-backend` kosong, tanpa galat. Diperbaiki
+menjadi `topic readwrite`; ingest pulih dan diverifikasi (publish `9999` → backend mencatat
+`invalid berat_kg`). Konsekuensinya: klaim "mitigasi 26 Nov berjalan tanpa mengganggu layanan" **tidak
+benar** — layanan sempat diam dari 26 Nov 03:22 sampai 27 Nov 02:13 UTC.
 
 ---
 
